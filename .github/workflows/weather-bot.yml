@@ -16,7 +16,7 @@ jobs:
         # Get current date in Melbourne timezone
         CURRENT_DATE=$(TZ=Australia/Melbourne date +%Y-%m-%d)
         
-        # Target dates to forecast
+        # Target date to stop
         TARGET_DATE="2025-12-05"
         
         # Check if we should still run (stop after Dec 5, 2025)
@@ -25,22 +25,69 @@ jobs:
           exit 0
         fi
         
+        echo "Fetching weather data..."
+        
         # Fetch weather data from OpenWeatherMap
         WEATHER_RESPONSE=$(curl -s "https://api.openweathermap.org/data/2.5/forecast?lat=-37.8333&lon=144.1167&appid=${{ secrets.WEATHER_API_KEY }}&units=metric")
         
+        # Check if API call was successful
+        if echo "$WEATHER_RESPONSE" | grep -q "cod.*401"; then
+          echo "Error: Invalid API key"
+          exit 1
+        fi
+        
+        echo "Building message..."
+        
+        # Create a simpler message using Python
+        python3 << 'PYTHON_SCRIPT'
+        import json
+        import urllib.request
+        import urllib.parse
+        import sys
+        from datetime import datetime
+        
+        # Get weather data
+        weather_data = json.loads('''$WEATHER_RESPONSE''')
+        
         # Build message
-        MESSAGE="🌤️ *Weather Forecast for Meredith, VIC*%0A%0A"
-        MESSAGE+="*December 5, 2025:*%0A"
-        MESSAGE+="$(echo "$WEATHER_RESPONSE" | jq -r '[.list[] | select(.dt_txt | startswith("2025-12-05"))] | .[0] | "🌡️ Temp: \(.main.temp)°C%0A💧 Humidity: \(.main.humidity)%%0A☁️ \(.weather[0].description | ascii_upcase)%0A"')"
-        MESSAGE+="%0A*December 6, 2025:*%0A"
-        MESSAGE+="$(echo "$WEATHER_RESPONSE" | jq -r '[.list[] | select(.dt_txt | startswith("2025-12-06"))] | .[0] | "🌡️ Temp: \(.main.temp)°C%0A💧 Humidity: \(.main.humidity)%%0A☁️ \(.weather[0].description | ascii_upcase)%0A"')"
-        MESSAGE+="%0A*December 7, 2025:*%0A"
-        MESSAGE+="$(echo "$WEATHER_RESPONSE" | jq -r '[.list[] | select(.dt_txt | startswith("2025-12-07"))] | .[0] | "🌡️ Temp: \(.main.temp)°C%0A💧 Humidity: \(.main.humidity)%%0A☁️ \(.weather[0].description | ascii_upcase)%0A"')"
+        message = "🌤️ *Weather Forecast for Meredith, VIC*\n\n"
+        
+        dates = ["2025-12-05", "2025-12-06", "2025-12-07"]
+        date_names = ["December 5, 2025", "December 6, 2025", "December 7, 2025"]
+        
+        for date, date_name in zip(dates, date_names):
+            message += f"*{date_name}:*\n"
+            
+            # Find forecast for this date (around noon)
+            found = False
+            for item in weather_data.get('list', []):
+                if date in item['dt_txt'] and '12:00:00' in item['dt_txt']:
+                    temp = item['main']['temp']
+                    humidity = item['main']['humidity']
+                    description = item['weather'][0]['description'].title()
+                    
+                    message += f"🌡️ Temp: {temp}°C\n"
+                    message += f"💧 Humidity: {humidity}%\n"
+                    message += f"☁️ {description}\n\n"
+                    found = True
+                    break
+            
+            if not found:
+                message += "Data not available\n\n"
         
         # Send to Telegram
-        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-          -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-          -d "text=$MESSAGE" \
-          -d "parse_mode=Markdown"
+        bot_token = "${{ secrets.TELEGRAM_BOT_TOKEN }}"
+        chat_id = "${{ secrets.TELEGRAM_CHAT_ID }}"
         
-        echo "Weather forecast sent successfully!"
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = urllib.parse.urlencode({
+            'chat_id': chat_id,
+            'text': message,
+            'parse_mode': 'Markdown'
+        }).encode()
+        
+        req = urllib.request.Request(url, data=data)
+        response = urllib.request.urlopen(req)
+        
+        print("Weather forecast sent successfully!")
+        PYTHON_SCRIPT
