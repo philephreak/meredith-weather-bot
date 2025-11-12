@@ -12,6 +12,10 @@ jobs:
     
     steps:
     - name: Send Weather Forecast
+      env:
+        WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: |
         # Get current date in Melbourne timezone
         CURRENT_DATE=$(TZ=Australia/Melbourne date +%Y-%m-%d)
@@ -25,29 +29,35 @@ jobs:
           exit 0
         fi
         
-        echo "Fetching weather data..."
+        echo "Fetching weather data and sending to Telegram..."
         
-        # Fetch weather data from OpenWeatherMap
-        WEATHER_RESPONSE=$(curl -s "https://api.openweathermap.org/data/2.5/forecast?lat=-37.8333&lon=144.1167&appid=${{ secrets.WEATHER_API_KEY }}&units=metric")
-        
-        # Check if API call was successful
-        if echo "$WEATHER_RESPONSE" | grep -q "cod.*401"; then
-          echo "Error: Invalid API key"
-          exit 1
-        fi
-        
-        echo "Building message..."
-        
-        # Create a simpler message using Python
+        # Run everything in Python for simplicity
         python3 << 'PYTHON_SCRIPT'
         import json
         import urllib.request
         import urllib.parse
-        import sys
+        import os
         from datetime import datetime
         
-        # Get weather data
-        weather_data = json.loads('''$WEATHER_RESPONSE''')
+        # Get secrets from environment
+        api_key = os.environ['WEATHER_API_KEY']
+        bot_token = os.environ['TELEGRAM_BOT_TOKEN']
+        chat_id = os.environ['TELEGRAM_CHAT_ID']
+        
+        # Fetch weather data
+        weather_url = f"https://api.openweathermap.org/data/2.5/forecast?lat=-37.8333&lon=144.1167&appid={api_key}&units=metric"
+        
+        try:
+            with urllib.request.urlopen(weather_url) as response:
+                weather_data = json.loads(response.read())
+        except Exception as e:
+            print(f"Error fetching weather: {e}")
+            exit(1)
+        
+        # Check for API errors
+        if 'cod' in weather_data and str(weather_data['cod']) == '401':
+            print("Error: Invalid API key")
+            exit(1)
         
         # Build message
         message = "🌤️ *Weather Forecast for Meredith, VIC*\n\n"
@@ -76,18 +86,23 @@ jobs:
                 message += "Data not available\n\n"
         
         # Send to Telegram
-        bot_token = "${{ secrets.TELEGRAM_BOT_TOKEN }}"
-        chat_id = "${{ secrets.TELEGRAM_CHAT_ID }}"
-        
-        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         data = urllib.parse.urlencode({
             'chat_id': chat_id,
             'text': message,
             'parse_mode': 'Markdown'
         }).encode()
         
-        req = urllib.request.Request(url, data=data)
-        response = urllib.request.urlopen(req)
+        req = urllib.request.Request(telegram_url, data=data)
         
-        print("Weather forecast sent successfully!")
+        try:
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read())
+                if result.get('ok'):
+                    print("✅ Weather forecast sent successfully!")
+                else:
+                    print(f"Telegram error: {result}")
+        except Exception as e:
+            print(f"Error sending to Telegram: {e}")
+            exit(1)
         PYTHON_SCRIPT
