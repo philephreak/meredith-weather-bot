@@ -13,7 +13,6 @@ jobs:
     steps:
     - name: Send Weather Forecast
       env:
-        WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: |
@@ -29,9 +28,9 @@ jobs:
           exit 0
         fi
         
-        echo "Fetching weather data and sending to Telegram..."
+        echo "Fetching weather data from Open-Meteo and sending to Telegram..."
         
-        # Run everything in Python for simplicity
+        # Run everything in Python
         python3 << 'PYTHON_SCRIPT'
         import json
         import urllib.request
@@ -40,12 +39,15 @@ jobs:
         from datetime import datetime
         
         # Get secrets from environment
-        api_key = os.environ['WEATHER_API_KEY']
         bot_token = os.environ['TELEGRAM_BOT_TOKEN']
         chat_id = os.environ['TELEGRAM_CHAT_ID']
         
-        # Fetch weather data
-        weather_url = f"https://api.openweathermap.org/data/2.5/forecast?lat=-37.8333&lon=144.1167&appid={api_key}&units=metric"
+        # Meredith, Victoria coordinates
+        latitude = -37.8333
+        longitude = 144.1167
+        
+        # Fetch weather data from Open-Meteo (16-day forecast, free!)
+        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,windspeed_10m_max&timezone=Australia/Melbourne"
         
         try:
             with urllib.request.urlopen(weather_url) as response:
@@ -54,36 +56,89 @@ jobs:
             print(f"Error fetching weather: {e}")
             exit(1)
         
-        # Check for API errors
-        if 'cod' in weather_data and str(weather_data['cod']) == '401':
-            print("Error: Invalid API key")
-            exit(1)
+        # Weather code descriptions (Open-Meteo uses WMO codes)
+        weather_codes = {
+            0: "Clear sky",
+            1: "Mainly clear",
+            2: "Partly cloudy",
+            3: "Overcast",
+            45: "Foggy",
+            48: "Depositing rime fog",
+            51: "Light drizzle",
+            53: "Moderate drizzle",
+            55: "Dense drizzle",
+            61: "Slight rain",
+            63: "Moderate rain",
+            65: "Heavy rain",
+            71: "Slight snow",
+            73: "Moderate snow",
+            75: "Heavy snow",
+            77: "Snow grains",
+            80: "Slight rain showers",
+            81: "Moderate rain showers",
+            82: "Violent rain showers",
+            85: "Slight snow showers",
+            86: "Heavy snow showers",
+            95: "Thunderstorm",
+            96: "Thunderstorm with slight hail",
+            99: "Thunderstorm with heavy hail"
+        }
         
         # Build message
         message = "🌤️ *Weather Forecast for Meredith, VIC*\n\n"
         
-        dates = ["2025-12-05", "2025-12-06", "2025-12-07"]
+        # Get today's date
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        daily_data = weather_data.get('daily', {})
+        dates_list = daily_data.get('time', [])
+        
+        # Add today's weather first
+        message += f"*TODAY ({datetime.now().strftime('%B %d, %Y')}):*\n"
+        try:
+            today_index = dates_list.index(today)
+            
+            temp_max = daily_data['temperature_2m_max'][today_index]
+            temp_min = daily_data['temperature_2m_min'][today_index]
+            precipitation = daily_data['precipitation_sum'][today_index]
+            wind_speed = daily_data['windspeed_10m_max'][today_index]
+            weather_code = daily_data['weathercode'][today_index]
+            description = weather_codes.get(weather_code, "Unknown")
+            
+            message += f"🌡️ High: {temp_max}°C / Low: {temp_min}°C\n"
+            message += f"💧 Precipitation: {precipitation}mm\n"
+            message += f"💨 Max Wind: {wind_speed} km/h\n"
+            message += f"☁️ {description}\n\n"
+            message += "━━━━━━━━━━━━━━━━━━\n\n"
+            
+        except (ValueError, IndexError, KeyError):
+            message += "Data not available\n\n"
+        
+        # Get dates to forecast (Dec 5, 6, 7)
+        target_dates = ["2025-12-05", "2025-12-06", "2025-12-07"]
         date_names = ["December 5, 2025", "December 6, 2025", "December 7, 2025"]
         
-        for date, date_name in zip(dates, date_names):
+        for target_date, date_name in zip(target_dates, date_names):
             message += f"*{date_name}:*\n"
             
-            # Find forecast for this date (around noon)
-            found = False
-            for item in weather_data.get('list', []):
-                if date in item['dt_txt'] and '12:00:00' in item['dt_txt']:
-                    temp = item['main']['temp']
-                    humidity = item['main']['humidity']
-                    description = item['weather'][0]['description'].title()
-                    
-                    message += f"🌡️ Temp: {temp}°C\n"
-                    message += f"💧 Humidity: {humidity}%\n"
-                    message += f"☁️ {description}\n\n"
-                    found = True
-                    break
-            
-            if not found:
-                message += "Data not available\n\n"
+            # Find index for this date
+            try:
+                date_index = dates_list.index(target_date)
+                
+                temp_max = daily_data['temperature_2m_max'][date_index]
+                temp_min = daily_data['temperature_2m_min'][date_index]
+                precipitation = daily_data['precipitation_sum'][date_index]
+                wind_speed = daily_data['windspeed_10m_max'][date_index]
+                weather_code = daily_data['weathercode'][date_index]
+                description = weather_codes.get(weather_code, "Unknown")
+                
+                message += f"🌡️ High: {temp_max}°C / Low: {temp_min}°C\n"
+                message += f"💧 Precipitation: {precipitation}mm\n"
+                message += f"💨 Max Wind: {wind_speed} km/h\n"
+                message += f"☁️ {description}\n\n"
+                
+            except (ValueError, IndexError, KeyError):
+                message += "Forecast not yet available (within 16-day range starting ~Nov 19)\n\n"
         
         # Send to Telegram
         telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
