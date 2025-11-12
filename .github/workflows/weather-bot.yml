@@ -1,0 +1,46 @@
+name: Daily Weather Forecast
+
+on:
+  schedule:
+    # Runs at 9:00 AM Melbourne time (11:00 PM UTC previous day)
+    - cron: '0 23 * * *'
+  workflow_dispatch: # Allows manual testing
+
+jobs:
+  send-weather:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Send Weather Forecast
+      run: |
+        # Get current date in Melbourne timezone
+        CURRENT_DATE=$(TZ=Australia/Melbourne date +%Y-%m-%d)
+        
+        # Target dates to forecast
+        TARGET_DATE="2025-12-05"
+        
+        # Check if we should still run (stop after Dec 5, 2025)
+        if [[ "$CURRENT_DATE" > "$TARGET_DATE" ]]; then
+          echo "Stop date reached. No longer sending forecasts."
+          exit 0
+        fi
+        
+        # Fetch weather data from OpenWeatherMap
+        WEATHER_RESPONSE=$(curl -s "https://api.openweathermap.org/data/2.5/forecast?lat=-37.8333&lon=144.1167&appid=${{ secrets.WEATHER_API_KEY }}&units=metric")
+        
+        # Build message
+        MESSAGE="🌤️ *Weather Forecast for Meredith, VIC*%0A%0A"
+        MESSAGE+="*December 5, 2025:*%0A"
+        MESSAGE+="$(echo "$WEATHER_RESPONSE" | jq -r '[.list[] | select(.dt_txt | startswith("2025-12-05"))] | .[0] | "🌡️ Temp: \(.main.temp)°C%0A💧 Humidity: \(.main.humidity)%%0A☁️ \(.weather[0].description | ascii_upcase)%0A"')"
+        MESSAGE+="%0A*December 6, 2025:*%0A"
+        MESSAGE+="$(echo "$WEATHER_RESPONSE" | jq -r '[.list[] | select(.dt_txt | startswith("2025-12-06"))] | .[0] | "🌡️ Temp: \(.main.temp)°C%0A💧 Humidity: \(.main.humidity)%%0A☁️ \(.weather[0].description | ascii_upcase)%0A"')"
+        MESSAGE+="%0A*December 7, 2025:*%0A"
+        MESSAGE+="$(echo "$WEATHER_RESPONSE" | jq -r '[.list[] | select(.dt_txt | startswith("2025-12-07"))] | .[0] | "🌡️ Temp: \(.main.temp)°C%0A💧 Humidity: \(.main.humidity)%%0A☁️ \(.weather[0].description | ascii_upcase)%0A"')"
+        
+        # Send to Telegram
+        curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d "text=$MESSAGE" \
+          -d "parse_mode=Markdown"
+        
+        echo "Weather forecast sent successfully!"
