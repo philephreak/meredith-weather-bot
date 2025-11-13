@@ -2,8 +2,8 @@ name: Daily Weather Forecast
 
 on:
   schedule:
-    # Runs at 9:00 AM Melbourne time (11:00 PM UTC previous day)
-    - cron: '0 23 * * *'
+    # Runs at 9:00 AM Melbourne time (10:00 PM UTC previous day)
+    - cron: '0 22 * * *'
   workflow_dispatch: # Allows manual testing
 
 jobs:
@@ -37,10 +37,16 @@ jobs:
         import urllib.parse
         import os
         from datetime import datetime
+        import pytz
         
         # Get secrets from environment
         bot_token = os.environ['TELEGRAM_BOT_TOKEN']
         chat_id = os.environ['TELEGRAM_CHAT_ID']
+        
+        # Get today's date in Melbourne timezone
+        melbourne_tz = pytz.timezone('Australia/Melbourne')
+        today = datetime.now(melbourne_tz).strftime('%Y-%m-%d')
+        today_formatted = datetime.now(melbourne_tz).strftime('%B %d, %Y')
         
         # Meredith, Victoria coordinates
         latitude = -37.8333
