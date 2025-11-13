@@ -1,0 +1,185 @@
+name: MMF Website Monitor
+
+on:
+  schedule:
+    # Runs at 9:00 AM Melbourne time (10:00 PM UTC previous day)
+    - cron: '0 22 * * *'
+    # Runs at 5:00 PM Melbourne time (6:00 AM UTC same day)
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allows manual testing
+
+jobs:
+  check-website:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Check MMF Website for Changes
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.MY_TELEGRAM_CHAT_ID }}
+      run: |
+        echo "Checking MMF website for changes..."
+        
+        python3 << 'PYTHON_SCRIPT'
+        import json
+        import urllib.request
+        import urllib.parse
+        import os
+        import hashlib
+        from datetime import datetime
+        import difflib
+        import re
+        
+        # Get secrets from environment
+        bot_token = os.environ['TELEGRAM_BOT_TOKEN']
+        chat_id = os.environ['TELEGRAM_CHAT_ID']
+        
+        def extract_text_content(html):
+            """Extract meaningful text from HTML, removing scripts, styles, etc."""
+            # Remove script and style tags
+            html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            # Remove HTML tags
+            text = re.sub(r'<[^>]+>', ' ', html)
+            # Remove extra whitespace
+            text = re.sub(r'\s+', ' ', text)
+            return text.strip()
+        
+        def find_meaningful_changes(old_text, new_text):
+            """Find the actual text changes between two versions."""
+            old_lines = [line.strip() for line in old_text.split('.') if line.strip()]
+            new_lines = [line.strip() for line in new_text.split('.') if line.strip()]
+            
+            differ = difflib.Differ()
+            diff = list(differ.compare(old_lines, new_lines))
+            
+            additions = []
+            removals = []
+            
+            for line in diff:
+                if line.startswith('+ ') and len(line) > 10:  # Ignore very short changes
+                    additions.append(line[2:])
+                elif line.startswith('- ') and len(line) > 10:
+                    removals.append(line[2:])
+            
+            return additions, removals
+        
+        # Fetch the MMF website
+        url = "https://mmf.com.au/"
+        
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req) as response:
+                content = response.read().decode('utf-8')
+        except Exception as e:
+            print(f"Error fetching website: {e}")
+            exit(1)
+        
+        # Extract meaningful text content
+        text_content = extract_text_content(content)
+        
+        # Calculate content hash
+        content_hash = hashlib.md5(text_content.encode()).hexdigest()
+        
+        # Read previous content if it exists
+        previous_hash = None
+        previous_content = None
+        try:
+            with open('mmf_hash.txt', 'r') as f:
+                previous_hash = f.read().strip()
+            with open('mmf_content.txt', 'r') as f:
+                previous_content = f.read()
+        except FileNotFoundError:
+            print("First run - storing initial content")
+        
+        # Save current hash and content
+        with open('mmf_hash.txt', 'w') as f:
+            f.write(content_hash)
+        with open('mmf_content.txt', 'w') as f:
+            f.write(text_content)
+        
+        # Build message
+        if previous_hash is None:
+            message = "🎵 *MMF Website Monitor Started*\n\n"
+            message += "I'm now monitoring https://mmf.com.au/ for changes.\n"
+            message += "Checking twice daily at 9:00 AM and 5:00 PM.\n\n"
+            message += f"Initial check: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
+            changed = False
+        elif previous_hash != content_hash:
+            # Find what changed
+            additions, removals = find_meaningful_changes(previous_content, text_content)
+            
+            message = "🚨 *MMF Website Has Changed!*\n\n"
+            
+            if additions:
+                message += "📝 *New Content:*\n"
+                for i, addition in enumerate(additions[:5], 1):  # Limit to first 5 changes
+                    # Truncate long additions
+                    if len(addition) > 150:
+                        addition = addition[:150] + "..."
+                    message += f"{i}. {addition}\n\n"
+                if len(additions) > 5:
+                    message += f"_...and {len(additions) - 5} more additions_\n\n"
+            
+            if removals:
+                message += "🗑️ *Removed Content:*\n"
+                for i, removal in enumerate(removals[:3], 1):  # Limit to first 3 removals
+                    if len(removal) > 150:
+                        removal = removal[:150] + "..."
+                    message += f"{i}. {removal}\n\n"
+                if len(removals) > 3:
+                    message += f"_...and {len(removals) - 3} more removals_\n\n"
+            
+            message += f"🔗 Check it out: {url}\n\n"
+            message += f"Detected: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
+            changed = True
+        else:
+            # Only send "no changes" message for manual runs, not scheduled runs
+            # This prevents spam twice a day
+            import sys
+            if 'workflow_dispatch' in os.environ.get('GITHUB_EVENT_NAME', ''):
+                message = "✅ *MMF Website Check*\n\n"
+                message += "No changes detected on https://mmf.com.au/\n\n"
+                message += f"Last checked: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
+                changed = False
+            else:
+                print("No changes detected - skipping notification for scheduled run")
+                exit(0)
+        
+        # Send to Telegram
+        telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = urllib.parse.urlencode({
+            'chat_id': chat_id,
+            'text': message,
+            'parse_mode': 'Markdown'
+        }).encode()
+        
+        req = urllib.request.Request(telegram_url, data=data)
+        
+        try:
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read())
+                if result.get('ok'):
+                    status = "CHANGED" if changed else "NO CHANGE"
+                    print(f"✅ Notification sent successfully! Status: {status}")
+                else:
+                    print(f"Telegram error: {result}")
+        except Exception as e:
+            print(f"Error sending to Telegram: {e}")
+            exit(1)
+        PYTHON_SCRIPT
+    
+    - name: Commit hash file
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add mmf_hash.txt mmf_content.txt
+        git diff --quiet && git diff --staged --quiet || git commit -m "Update MMF website hash and content"
+    
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
