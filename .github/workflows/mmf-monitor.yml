@@ -1,0 +1,223 @@
+name: MMF & Golden Plains Website Monitor
+
+on:
+  schedule:
+    # Runs at 9:00 AM Melbourne time (10:00 PM UTC previous day)
+    - cron: '0 22 * * *'
+    # Runs at 5:00 PM Melbourne time (6:00 AM UTC same day)
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allows manual testing
+
+jobs:
+  check-website:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Check Websites for Changes
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.MY_TELEGRAM_CHAT_ID }}
+      run: |
+        echo "Checking festival websites for changes..."
+        
+        python3 << 'PYTHON_SCRIPT'
+        import json
+        import urllib.request
+        import urllib.parse
+        import os
+        import hashlib
+        from datetime import datetime
+        import difflib
+        import re
+        
+        # Get secrets from environment
+        bot_token = os.environ['TELEGRAM_BOT_TOKEN']
+        chat_id = os.environ['TELEGRAM_CHAT_ID']
+        
+        def extract_text_content(html):
+            """Extract meaningful text from HTML, removing scripts, styles, etc."""
+            # Remove script and style tags
+            html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+            # Remove HTML tags
+            text = re.sub(r'<[^>]+>', ' ', html)
+            # Remove extra whitespace
+            text = re.sub(r'\s+', ' ', text)
+            return text.strip()
+        
+        def find_meaningful_changes(old_text, new_text):
+            """Find the actual text changes between two versions."""
+            old_lines = [line.strip() for line in old_text.split('.') if line.strip()]
+            new_lines = [line.strip() for line in new_text.split('.') if line.strip()]
+            
+            differ = difflib.Differ()
+            diff = list(differ.compare(old_lines, new_lines))
+            
+            additions = []
+            removals = []
+            
+            for line in diff:
+                if line.startswith('+ ') and len(line) > 10:  # Ignore very short changes
+                    additions.append(line[2:])
+                elif line.startswith('- ') and len(line) > 10:
+                    removals.append(line[2:])
+            
+            return additions, removals
+        
+        def check_website(site_name, url, hash_file, content_file):
+            """Check a single website for changes."""
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as response:
+                    content = response.read().decode('utf-8')
+            except Exception as e:
+                print(f"Error fetching {site_name}: {e}")
+                return None
+            
+            # Extract meaningful text content
+            text_content = extract_text_content(content)
+            
+            # Calculate content hash
+            content_hash = hashlib.md5(text_content.encode()).hexdigest()
+            
+            # Read previous content if it exists
+            previous_hash = None
+            previous_content = None
+            try:
+                with open(hash_file, 'r') as f:
+                    previous_hash = f.read().strip()
+                with open(content_file, 'r') as f:
+                    previous_content = f.read()
+            except FileNotFoundError:
+                print(f"First run for {site_name} - storing initial content")
+            
+            # Save current hash and content
+            with open(hash_file, 'w') as f:
+                f.write(content_hash)
+            with open(content_file, 'w') as f:
+                f.write(text_content)
+            
+            # Determine if changed
+            if previous_hash is None:
+                return {'status': 'first_run', 'site_name': site_name, 'url': url}
+            elif previous_hash != content_hash:
+                additions, removals = find_meaningful_changes(previous_content, text_content)
+                return {
+                    'status': 'changed',
+                    'site_name': site_name,
+                    'url': url,
+                    'additions': additions,
+                    'removals': removals
+                }
+            else:
+                return {'status': 'no_change', 'site_name': site_name, 'url': url}
+        
+        # Check both websites
+        websites = [
+            ('Meredith Music Festival', 'https://mmf.com.au/', 'mmf_hash.txt', 'mmf_content.txt'),
+            ('Golden Plains', 'https://goldenplains.com.au/', 'gp_hash.txt', 'gp_content.txt')
+        ]
+        
+        results = []
+        for site_name, url, hash_file, content_file in websites:
+            result = check_website(site_name, url, hash_file, content_file)
+            if result:
+                results.append(result)
+        
+        # Build message based on results
+        messages_to_send = []
+        any_first_run = False
+        any_changes = False
+        
+        for result in results:
+            if result['status'] == 'first_run':
+                any_first_run = True
+            elif result['status'] == 'changed':
+                any_changes = True
+                message = f"🚨 *{result['site_name']} Has Changed!*\n\n"
+                
+                if result['additions']:
+                    message += "📝 *New Content:*\n"
+                    for i, addition in enumerate(result['additions'][:5], 1):
+                        if len(addition) > 150:
+                            addition = addition[:150] + "..."
+                        message += f"{i}. {addition}\n\n"
+                    if len(result['additions']) > 5:
+                        message += f"_...and {len(result['additions']) - 5} more additions_\n\n"
+                
+                if result['removals']:
+                    message += "🗑️ *Removed Content:*\n"
+                    for i, removal in enumerate(result['removals'][:3], 1):
+                        if len(removal) > 150:
+                            removal = removal[:150] + "..."
+                        message += f"{i}. {removal}\n\n"
+                    if len(result['removals']) > 3:
+                        message += f"_...and {len(result['removals']) - 3} more removals_\n\n"
+                
+                message += f"🔗 Check it out: {result['url']}\n\n"
+                message += f"Detected: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
+                messages_to_send.append(message)
+        
+        # Send initial setup message if first run
+        if any_first_run and not any_changes:
+            message = "🎵 *Festival Website Monitor Started*\n\n"
+            message += "I'm now monitoring:\n"
+            message += "• https://mmf.com.au/\n"
+            message += "• https://goldenplains.com.au/\n\n"
+            message += "Checking twice daily at 9:00 AM and 5:00 PM.\n\n"
+            message += f"Initial check: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
+            messages_to_send.append(message)
+        
+        # Send "no changes" only for manual runs
+        if not any_changes and not any_first_run:
+            if 'workflow_dispatch' in os.environ.get('GITHUB_EVENT_NAME', ''):
+                message = "✅ *Festival Website Check*\n\n"
+                message += "No changes detected on:\n"
+                message += "• Meredith Music Festival\n"
+                message += "• Golden Plains\n\n"
+                message += f"Last checked: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
+                messages_to_send.append(message)
+            else:
+                print("No changes detected - skipping notification for scheduled run")
+        
+        # Send all messages
+        telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        
+        for message in messages_to_send:
+            data = urllib.parse.urlencode({
+                'chat_id': chat_id,
+                'text': message,
+                'parse_mode': 'Markdown'
+            }).encode()
+            
+            req = urllib.request.Request(telegram_url, data=data)
+            
+            try:
+                with urllib.request.urlopen(req) as response:
+                    result = json.loads(response.read())
+                    if result.get('ok'):
+                        print(f"✅ Notification sent successfully!")
+                    else:
+                        print(f"Telegram error: {result}")
+            except Exception as e:
+                print(f"Error sending to Telegram: {e}")
+        
+        if messages_to_send:
+            print(f"Sent {len(messages_to_send)} notification(s)")
+        PYTHON_SCRIPT
+    
+    - name: Commit hash files
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add mmf_hash.txt mmf_content.txt gp_hash.txt gp_content.txt
+        git diff --quiet && git diff --staged --quiet || git commit -m "Update festival website hashes and content"
+    
+    - name: Push changes
+      run: |
+        git push
