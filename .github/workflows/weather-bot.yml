@@ -36,17 +36,18 @@ jobs:
         import urllib.request
         import urllib.parse
         import os
-        from datetime import datetime
-        import pytz
+        from datetime import datetime, timezone, timedelta
         
         # Get secrets from environment
         bot_token = os.environ['TELEGRAM_BOT_TOKEN']
         chat_id = os.environ['TELEGRAM_CHAT_ID']
         
-        # Get today's date in Melbourne timezone
-        melbourne_tz = pytz.timezone('Australia/Melbourne')
-        today = datetime.now(melbourne_tz).strftime('%Y-%m-%d')
-        today_formatted = datetime.now(melbourne_tz).strftime('%B %d, %Y')
+        # Get today's date in Melbourne timezone (UTC+11 for AEDT)
+        melbourne_offset = timedelta(hours=11)
+        melbourne_tz = timezone(melbourne_offset)
+        now_melbourne = datetime.now(timezone.utc).astimezone(melbourne_tz)
+        today = now_melbourne.strftime('%Y-%m-%d')
+        today_formatted = now_melbourne.strftime('%B %d, %Y')
         
         # Meredith, Victoria coordinates
         latitude = -37.8333
@@ -93,14 +94,11 @@ jobs:
         # Build message
         message = "🌤️ *Weather Forecast for Meredith, VIC*\n\n"
         
-        # Get today's date
-        today = datetime.now().strftime('%Y-%m-%d')
-        
         daily_data = weather_data.get('daily', {})
         dates_list = daily_data.get('time', [])
         
         # Add today's weather first
-        message += f"*TODAY ({datetime.now().strftime('%B %d, %Y')}):*\n"
+        message += f"*TODAY ({today_formatted}):*\n"
         try:
             today_index = dates_list.index(today)
             
@@ -117,8 +115,10 @@ jobs:
             message += f"☁️ {description}\n\n"
             message += "━━━━━━━━━━━━━━━━━━\n\n"
             
-        except (ValueError, IndexError, KeyError):
-            message += "Data not available\n\n"
+        except (ValueError, IndexError, KeyError) as e:
+            # Debug: show what date we're looking for and what's available
+            message += f"Data not available (Looking for: {today}, Available: {dates_list[:3] if dates_list else 'none'})\n\n"
+            message += "━━━━━━━━━━━━━━━━━━\n\n"
         
         # Get dates to forecast (Dec 5, 6, 7)
         target_dates = ["2025-12-05", "2025-12-06", "2025-12-07"]
