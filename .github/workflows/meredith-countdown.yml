@@ -1,0 +1,154 @@
+name: Meredith Festival Countdown
+
+on:
+  schedule:
+    # Runs at 5:00 PM Melbourne time (6:00 AM UTC same day)
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allows manual testing
+
+jobs:
+  send-countdown:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Send Daily Countdown
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        echo "Sending Meredith countdown..."
+        
+        python3 << 'PYTHON_SCRIPT'
+        import json
+        import urllib.request
+        import urllib.parse
+        import os
+        from datetime import datetime, timezone, timedelta
+        import random
+        
+        # Get secrets from environment
+        bot_token = os.environ['TELEGRAM_BOT_TOKEN']
+        chat_id = os.environ['TELEGRAM_CHAT_ID']
+        
+        # Festival date: December 5, 2025
+        melbourne_offset = timedelta(hours=11)
+        melbourne_tz = timezone(melbourne_offset)
+        now_melbourne = datetime.now(timezone.utc).astimezone(melbourne_tz)
+        festival_date = datetime(2025, 12, 5, tzinfo=melbourne_tz)
+        
+        # Calculate days until festival
+        days_until = (festival_date.date() - now_melbourne.date()).days
+        
+        # If festival has started or passed, don't send
+        if days_until < 0:
+            print("Festival has passed!")
+            exit(0)
+        
+        # Artist lineup with YouTube video IDs
+        artists = [
+            {"name": "TV On The Radio", "video": "dQw4w9WgXcQ", "song": "Wolf Like Me"},
+            {"name": "ATARASHII GAKKO!", "video": "gfIxtIa00yo", "song": "NAINAINAI"},
+            {"name": "Perfume Genius", "video": "lt_EcoXHMpI", "song": "Queen"},
+            {"name": "Chet Faker", "video": "hi4pzKvuEQM", "song": "Gold"},
+            {"name": "Pa Salieu", "video": "OQENyIRx48o", "song": "Frontline"},
+            {"name": "HAAi", "video": "hY-ScL9WJMU", "song": "Purple Jelly Disc"},
+            {"name": "Bar Italia", "video": "gOBW8FdJjEs", "song": "Nurse!"},
+            {"name": "Mildlife", "video": "TQ2vVwjYdeM", "song": "The Magnificent Moon"},
+            {"name": "Folk Bitch Trio", "video": "ZqYRXl_eJ1Y", "song": "Crocodile"},
+            {"name": "Colin Hay", "video": "J9gKyRmic20", "song": "Overkill"},
+            {"name": "Omar Souleyman", "video": "lVlgMEFu1PI", "song": "Warni Warni"},
+            {"name": "Ninajirachi", "video": "8kx-8qhxiME", "song": "Poison"},
+            {"name": "RONA", "video": "dH8Afl07sYY", "song": "Boiler Room Set"},
+            {"name": "Florist", "video": "qy9r9_zxS00", "song": "Red Bird Pt. 2"},
+            {"name": "RP Boo", "video": "o8NyTowIJKc", "song": "Godzilla"},
+        ]
+        
+        # Packing tips/reminders (one per day)
+        packing_tips = [
+            "🎪 Don't forget your tent pegs and a mallet! The ground can be hard.",
+            "💧 Pack a reusable water bottle - staying hydrated is crucial in the Aussie summer!",
+            "🔦 Headlamp > flashlight. You'll need both hands free at night.",
+            "🧴 SPF 50+ sunscreen. The Victorian sun doesn't mess around.",
+            "🎒 Bring a small day bag for carrying essentials around the festival.",
+            "🧥 Pack layers! Desert nights get cold even in summer.",
+            "👟 Comfy closed-toe shoes. Thongs are for the campsite only.",
+            "💊 Basic first aid kit: pain relief, bandaids, antihistamines.",
+            "🔋 Portable charger/power bank - your phone will die otherwise.",
+            "🧻 Toilet paper and hand sanitiser. Trust us on this.",
+            "🎵 Earplugs for sleeping (ironic, we know).",
+            "🍴 Camping cutlery, plates, cups - and a can opener!",
+            "🔥 Matches or lighter for your camp stove.",
+            "💼 Zip-lock bags to keep things dry and organized.",
+            "🌙 Camping chair - your back will thank you.",
+            "🧢 Wide-brimmed hat for sun protection.",
+            "🩱 Swimmers for spontaneous dips (it gets HOT).",
+            "🗑️ Garbage bags - leave no trace!",
+            "💤 Earplugs AND an eye mask for quality sleep.",
+            "🍻 Don't forget your BYO drinks! (within limits)",
+            "📱 Download offline maps of the festival grounds.",
+            "🧴 After-sun cream or aloe vera gel.",
+            "🎭 Costume for The Gift! Get creative.",
+            "🔦 Glow sticks or LED lights to find your tent at night.",
+            "🎶 Check the set times when they're released!",
+            "🚗 Plan your route and check for road works.",
+            "⛺ Test your tent at home before you go!",
+            "🥪 Pre-make some easy camping meals.",
+            "💳 Cash for any festival purchases.",
+            "🆔 Don't forget your ID and ticket!",
+        ]
+        
+        # Select artist for today (deterministic based on day)
+        artist_index = days_until % len(artists)
+        today_artist = artists[artist_index]
+        
+        # Select packing tip (deterministic based on day)
+        tip_index = days_until % len(packing_tips)
+        today_tip = packing_tips[tip_index]
+        
+        # Build message
+        if days_until == 0:
+            message = "🎉 *IT'S FESTIVAL DAY!* 🎉\n\n"
+            message += "MEREDITH IS HERE! Have an absolutely incredible time! 🌟\n\n"
+            message += "Stay safe, stay hydrated, and make some unforgettable memories! 🎵✨"
+        else:
+            message = f"🎪 *MEREDITH COUNTDOWN* 🎪\n\n"
+            
+            if days_until == 1:
+                message += f"*TOMORROW IS THE DAY!* 🎉\n\n"
+            else:
+                message += f"*{days_until} days until Meredith!* ⏰\n\n"
+            
+            message += f"━━━━━━━━━━━━━━━━━━\n\n"
+            message += f"📦 *Daily Reminder:*\n{today_tip}\n\n"
+            message += f"━━━━━━━━━━━━━━━━━━\n\n"
+            message += f"🎵 *Artist of the Day: {today_artist['name']}*\n"
+            message += f"Check out '{today_artist['song']}':\n"
+            message += f"https://www.youtube.com/watch?v={today_artist['video']}\n\n"
+            
+            if days_until <= 7:
+                message += "🔥 *ONE WEEK TO GO!* Get excited! 🔥"
+            elif days_until <= 14:
+                message += "🎸 Two weeks away! Time to finalize your plans! 🎸"
+        
+        # Send to Telegram
+        telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = urllib.parse.urlencode({
+            'chat_id': chat_id,
+            'text': message,
+            'parse_mode': 'Markdown',
+            'disable_web_page_preview': False
+        }).encode()
+        
+        req = urllib.request.Request(telegram_url, data=data)
+        
+        try:
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read())
+                if result.get('ok'):
+                    print(f"✅ Countdown sent! {days_until} days until Meredith!")
+                else:
+                    print(f"Telegram error: {result}")
+        except Exception as e:
+            print(f"Error sending to Telegram: {e}")
+            exit(1)
+        PYTHON_SCRIPT
