@@ -135,7 +135,7 @@ jobs:
         data = urllib.parse.urlencode({
             'chat_id': chat_id,
             'text': message,
-            'disable_web_page_preview': True
+            'disable_web_page_preview': False
         }).encode()
         
         req = urllib.request.Request(telegram_url, data=data)
