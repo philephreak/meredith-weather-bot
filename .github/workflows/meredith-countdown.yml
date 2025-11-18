@@ -107,36 +107,35 @@ jobs:
         
         # Build message
         if days_until == 0:
-            message = "🎉 *IT'S FESTIVAL DAY!* 🎉\n\n"
+            message = "🎉 IT'S FESTIVAL DAY! 🎉\n\n"
             message += "MEREDITH IS HERE! Have an absolutely incredible time! 🌟\n\n"
             message += "Stay safe, stay hydrated, and make some unforgettable memories! 🎵✨"
         else:
-            message = f"🎪 *MEREDITH COUNTDOWN* 🎪\n\n"
+            message = f"🎪 MEREDITH COUNTDOWN 🎪\n\n"
             
             if days_until == 1:
-                message += f"*TOMORROW IS THE DAY!* 🎉\n\n"
+                message += f"TOMORROW IS THE DAY! 🎉\n\n"
             else:
-                message += f"*{days_until} days until Meredith!* ⏰\n\n"
+                message += f"{days_until} days until Meredith! ⏰\n\n"
             
             message += f"━━━━━━━━━━━━━━━━━━\n\n"
-            message += f"📦 *Daily Reminder:*\n{today_tip}\n\n"
+            message += f"📦 Daily Reminder:\n{today_tip}\n\n"
             message += f"━━━━━━━━━━━━━━━━━━\n\n"
-            message += f"🎵 *Artist of the Day: {today_artist['name']}*\n"
+            message += f"🎵 Artist of the Day: {today_artist['name']}\n"
             message += f"Check out '{today_artist['song']}':\n"
             message += f"https://www.youtube.com/watch?v={today_artist['video']}\n\n"
             
             if days_until <= 7:
-                message += "🔥 *ONE WEEK TO GO!* Get excited! 🔥"
+                message += "🔥 ONE WEEK TO GO! Get excited! 🔥"
             elif days_until <= 14:
                 message += "🎸 Two weeks away! Time to finalize your plans! 🎸"
         
-        # Send to Telegram
+        # Send to Telegram (no Markdown parsing to avoid formatting issues)
         telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         data = urllib.parse.urlencode({
             'chat_id': chat_id,
             'text': message,
-            'parse_mode': 'Markdown',
-            'disable_web_page_preview': False
+            'disable_web_page_preview': True
         }).encode()
         
         req = urllib.request.Request(telegram_url, data=data)
