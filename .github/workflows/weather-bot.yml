@@ -97,6 +97,10 @@ jobs:
         daily_data = weather_data.get('daily', {})
         dates_list = daily_data.get('time', [])
         
+        # Debug: print available dates
+        print(f"Available forecast dates: {dates_list}")
+        print(f"Looking for today: {today}")
+        
         # Add today's weather first
         message += f"*TODAY ({today_formatted}):*\n"
         try:
@@ -117,7 +121,7 @@ jobs:
             
         except (ValueError, IndexError, KeyError) as e:
             # Debug: show what date we're looking for and what's available
-            message += f"Data not available (Looking for: {today}, Available: {dates_list[:3] if dates_list else 'none'})\n\n"
+            message += f"Data not available\n\n"
             message += "━━━━━━━━━━━━━━━━━━\n\n"
         
         # Get dates to forecast (Dec 5, 6, 7)
@@ -126,6 +130,8 @@ jobs:
         
         for target_date, date_name in zip(target_dates, date_names):
             message += f"*{date_name}:*\n"
+            
+            print(f"Looking for date: {target_date}")
             
             # Find index for this date
             try:
@@ -143,8 +149,10 @@ jobs:
                 message += f"💨 Max Wind: {wind_speed} km/h\n"
                 message += f"☁️ {description}\n\n"
                 
-            except (ValueError, IndexError, KeyError):
-                message += "Forecast not yet available (within 16-day range starting ~Nov 19)\n\n"
+            except (ValueError, IndexError, KeyError) as e:
+                print(f"Error for {target_date}: {e}")
+                days_away = (datetime.strptime(target_date, '%Y-%m-%d').date() - now_melbourne.date()).days
+                message += f"Forecast not yet available ({days_away} days away, data range: {len(dates_list)} days)\n\n"
         
         # Send to Telegram
         telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
