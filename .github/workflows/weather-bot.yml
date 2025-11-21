@@ -54,7 +54,8 @@ jobs:
         longitude = 144.1167
         
         # Fetch weather data from Open-Meteo (16-day forecast, free!)
-        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,windspeed_10m_max&timezone=Australia/Melbourne"
+        # Using forecast_days=16 to get extended forecast
+        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,windspeed_10m_max&timezone=Australia/Melbourne&forecast_days=16"
         
         try:
             with urllib.request.urlopen(weather_url) as response:
