@@ -57,8 +57,8 @@ jobs:
         # Parse the forecast data
         def extract_forecast(html, date_str):
             """Extract forecast for a specific date from BoM HTML."""
-            # Look for the date heading
-            pattern = f'{date_str}.*?Min.*?(\d+).*?Max.*?(\d+).*?Precis.*?Possible rainfall:.*?([\d\.]+ to [\d\.]+ mm|0 mm|0 to [\d\.]+ mm).*?Chance of any rain:.*?(\d+)%'
+            # Look for the date heading and forecast data
+            pattern = f'{date_str}.*?Min.*?(\d+).*?Max.*?(\d+).*?Possible rainfall:.*?([\d\.]+ to [\d\.]+ mm|0 mm|0 to [\d\.]+ mm).*?Chance of any rain:.*?(\d+)%'
             match = re.search(pattern, html, re.DOTALL)
             
             if match:
@@ -67,12 +67,29 @@ jobs:
                 rainfall = match.group(3)
                 rain_chance = match.group(4)
                 
-                # Extract description
-                desc_pattern = f'{date_str}.*?Central area\s+(.*?)(?:Sun protection|Fire Danger|Overnight temperatures)'
+                # Extract description - look for text after "Central area"
+                desc_pattern = f'{date_str}.*?Central area\s+(.*?)(?:Sun protection|Fire Danger|Winds |Overnight temperatures)'
                 desc_match = re.search(desc_pattern, html, re.DOTALL)
-                description = desc_match.group(1).strip()[:200] if desc_match else "No description available"
-                # Clean up description
-                description = re.sub(r'\s+', ' ', description)
+                
+                if desc_match:
+                    description = desc_match.group(1).strip()
+                    # Clean up: remove extra whitespace, limit length
+                    description = re.sub(r'\s+', ' ', description)
+                    # Take first sentence or two (up to 150 chars)
+                    if len(description) > 150:
+                        description = description[:150].rsplit('.', 1)[0] + '.'
+                else:
+                    # Fallback: try to get any text between the date and next section
+                    fallback_pattern = f'{date_str}.*?Central area(.*?)(?:Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|The next routine)'
+                    fallback_match = re.search(fallback_pattern, html, re.DOTALL)
+                    if fallback_match:
+                        description = fallback_match.group(1).strip()[:100]
+                        description = re.sub(r'\s+', ' ', description)
+                    else:
+                        # Just extract the precis/summary
+                        precis_pattern = f'{date_str}.*?Precis\s+(.*?)(?:Possible rainfall)'
+                        precis_match = re.search(precis_pattern, html, re.DOTALL)
+                        description = precis_match.group(1).strip() if precis_match else "Partly cloudy"
                 
                 return {
                     'min': min_temp,
