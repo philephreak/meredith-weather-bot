@@ -120,9 +120,9 @@ jobs:
         
         # Target dates for festival
         target_dates = [
-            ('Friday 5 December', 'December 5, 2025'),
-            ('Saturday 6 December', 'December 6, 2025'),
-            ('Sunday 7 December', 'December 7, 2025')
+            ('Friday 5 December', 'Friday, December 5, 2025'),
+            ('Saturday 6 December', 'Saturday, December 6, 2025'),
+            ('Sunday 7 December', 'Sunday, December 7, 2025')
         ]
         
         for date_str, display_name in target_dates:
