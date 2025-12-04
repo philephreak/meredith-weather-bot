@@ -2,25 +2,19 @@ name: Jake Wristband Reminder
 
 on:
   schedule:
-    # December 4th, 2025 - Every 20 minutes from 7:50pm to 10pm Melbourne time
-    # 7:50 PM = 8:50 AM UTC
-    - cron: '50 8 4 12 *'
-    # 8:10 PM = 9:10 AM UTC
-    - cron: '10 9 4 12 *'
-    # 8:30 PM = 9:30 AM UTC
-    - cron: '30 9 4 12 *'
-    # 8:50 PM = 9:50 AM UTC
-    - cron: '50 9 4 12 *'
-    # 9:10 PM = 10:10 AM UTC
-    - cron: '10 10 4 12 *'
-    # 9:30 PM = 10:30 AM UTC
-    - cron: '30 10 4 12 *'
-    # 9:50 PM = 10:50 AM UTC
-    - cron: '50 10 4 12 *'
-    # 10:00 PM = 11:00 AM UTC (final one at 10pm)
-    - cron: '0 11 4 12 *'
-    
-    # December 5th, 2025 - Every 5 minutes from 5:15am to 6am Melbourne time
+    # December 5th, 2025 - Every 5 minutes from 4:45am to 6:00am Melbourne time
+    # 4:45 AM = 5:45 PM UTC Dec 4
+    - cron: '45 17 4 12 *'
+    # 4:50 AM = 5:50 PM UTC Dec 4
+    - cron: '50 17 4 12 *'
+    # 4:55 AM = 5:55 PM UTC Dec 4
+    - cron: '55 17 4 12 *'
+    # 5:00 AM = 6:00 PM UTC Dec 4
+    - cron: '0 18 4 12 *'
+    # 5:05 AM = 6:05 PM UTC Dec 4
+    - cron: '5 18 4 12 *'
+    # 5:10 AM = 6:10 PM UTC Dec 4
+    - cron: '10 18 4 12 *'
     # 5:15 AM = 6:15 PM UTC Dec 4
     - cron: '15 18 4 12 *'
     # 5:20 AM = 6:20 PM UTC Dec 4
@@ -74,19 +68,7 @@ jobs:
         current_hour = now_melbourne.hour
         current_minute = now_melbourne.minute
         
-        # Evening reminders (7:50pm-10pm) - Casual but building
-        evening_reminders = [
-            "🎸 Hey Jake! Quick reminder: Don't forget your wristband for tomorrow! (Unlike Radiohead, we don't want you to be a Creep without a ticket)",
-            "🎵 Jake mate, wristband check! Put it somewhere you'll see it in the morning. Maybe next to your phone? (Don't Stop Believin' you'll remember...)",
-            "🎤 Jake, this is your wristband bulletin! Have you located it? Put it with your keys! (We Will Rock You... but only if you have your wristband)",
-            "🎶 Jake! Getting later now. WRISTBAND. ON. BEDSIDE. TABLE. NOW. (Or you'll be Livin' on a Prayer tomorrow morning)",
-            "🎸 Jake seriously, put the bloody wristband in your pocket RIGHT NOW or you'll forget it. (Don't Let Me Down, mate)",
-            "🎵 JAKE. Wristband. Visible location. This is important! (Wish You Were Here... with your wristband tomorrow)",
-            "🎤 Jake mate, last few reminders. WRISTBAND SECURED YET? (With or Without You... preferably with your wristband)",
-            "🎶 JAKE! Final evening check. Wristband ready for tomorrow? (Sweet Dreams... about remembering your wristband)",
-        ]
-        
-        # Morning reminders (5:15am-6am) - ABSOLUTE CHAOS
+        # Morning reminders (4:45am-6:00am) - ABSOLUTE CHAOS (16 messages)
         morning_reminders = [
             "⏰ JAKE WAKE UP! WRISTBAND CHECK! DO YOU HAVE IT?! (Time to Face The Music...literally)",
             "🚨 JAKE! WRISTBAND! CHECK YOUR POCKET! CHECK YOUR BAG! (We're on the Highway to Hell if you forgot it)",
@@ -98,35 +80,27 @@ jobs:
             "🆘 JAKE! IF YOU DON'T HAVE THAT WRISTBAND I SWEAR TO GOD! (We're Not Gonna Take It... without your wristband!)",
             "🚨🚨🚨 EMERGENCY WRISTBAND CHECK! JAKE! RESPOND! DO YOU HAVE IT?! (Under Pressure... to remember your wristband!)",
             "⚠️ JAKE! WRISTBAND OR BUST! SERIOUS NOW MATE! (I Still Haven't Found What I'm Looking For... YOUR WRISTBAND!)",
+            "💥 JAKE WHERE IS THE F*CKING WRISTBAND?! TELL ME YOU HAVE IT! (Smells Like Teen Spirit... or panic if you forgot it!)",
+            "🔴 MATE THIS IS GETTING RIDICULOUS! WRISTBAND! NOW! (Back In Black... because you'll be back home without a wristband!)",
+            "💢 JAKE I'M NOT JOKING ANYMORE! WRISTBAND CONFIRMATION REQUIRED! (Bohemian Rhapsody... is this the real life or did you forget your wristband?!)",
+            "☠️ LAST CHANCE JAKE! WRISTBAND! WHERE IS IT?! (Another One Bites The Dust... like your festival plans without a wristband!)",
+            "🆘🆘🆘 ABSOLUTE FINAL WARNING! JAKE! WRISTBAND! (Stairway to Heaven... or highway to hell without your wristband!)",
+            "🚨🚨🚨 JAKE IF YOU DON'T HAVE THAT WRISTBAND WE'RE F*CKED! (Welcome to the Jungle... without a wristband you're not welcome anywhere!)",
         ]
         
         # Determine which message to send based on time
         # Create a simple mapping based on hour and minute
         time_key = (current_hour, current_minute)
         
-        # Evening reminders mapping (hour, minute) -> index
-        evening_times = [
-            (19, 50),  # 7:50 PM - index 0
-            (20, 10),  # 8:10 PM - index 1
-            (20, 30),  # 8:30 PM - index 2
-            (20, 50),  # 8:50 PM - index 3
-            (21, 10),  # 9:10 PM - index 4
-            (21, 30),  # 9:30 PM - index 5
-            (21, 50),  # 9:50 PM - index 6
-            (22, 0),   # 10:00 PM - index 7
-        ]
-        
         # Morning reminders mapping (hour, minute) -> index
         morning_times = [
-            (5, 15), (5, 20), (5, 25), (5, 30), (5, 35),
-            (5, 40), (5, 45), (5, 50), (5, 55), (6, 0)
+            (4, 45), (4, 50), (4, 55),  # 4:45-4:55
+            (5, 0), (5, 5), (5, 10), (5, 15), (5, 20), (5, 25), (5, 30), (5, 35), (5, 40), (5, 45), (5, 50), (5, 55),  # 5:00-5:55
+            (6, 0)  # 6:00
         ]
         
         # Find which message to send
-        if time_key in evening_times:
-            index = evening_times.index(time_key)
-            message = evening_reminders[index]
-        elif time_key in morning_times:
+        if time_key in morning_times:
             index = morning_times.index(time_key)
             message = morning_reminders[index]
         else:
