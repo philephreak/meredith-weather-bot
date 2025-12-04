@@ -1,0 +1,134 @@
+name: Jake Wristband Reminder
+
+on:
+  schedule:
+    # December 4th, 2025 - Every 30 minutes from 8pm to 10pm Melbourne time
+    # 8:00 PM = 9:00 AM UTC
+    - cron: '0 9 4 12 *'
+    # 8:30 PM = 9:30 AM UTC
+    - cron: '30 9 4 12 *'
+    # 9:00 PM = 10:00 AM UTC
+    - cron: '0 10 4 12 *'
+    # 9:30 PM = 10:30 AM UTC
+    - cron: '30 10 4 12 *'
+    # 10:00 PM = 11:00 AM UTC
+    - cron: '0 11 4 12 *'
+    
+    # December 5th, 2025 - Every 5 minutes from 5:15am to 6am Melbourne time
+    # 5:15 AM = 6:15 PM UTC Dec 4
+    - cron: '15 18 4 12 *'
+    # 5:20 AM = 6:20 PM UTC Dec 4
+    - cron: '20 18 4 12 *'
+    # 5:25 AM = 6:25 PM UTC Dec 4
+    - cron: '25 18 4 12 *'
+    # 5:30 AM = 6:30 PM UTC Dec 4
+    - cron: '30 18 4 12 *'
+    # 5:35 AM = 6:35 PM UTC Dec 4
+    - cron: '35 18 4 12 *'
+    # 5:40 AM = 6:40 PM UTC Dec 4
+    - cron: '40 18 4 12 *'
+    # 5:45 AM = 6:45 PM UTC Dec 4
+    - cron: '45 18 4 12 *'
+    # 5:50 AM = 6:50 PM UTC Dec 4
+    - cron: '50 18 4 12 *'
+    # 5:55 AM = 6:55 PM UTC Dec 4
+    - cron: '55 18 4 12 *'
+    # 6:00 AM = 7:00 PM UTC Dec 4
+    - cron: '0 19 4 12 *'
+  
+  workflow_dispatch: # Allows manual testing
+
+jobs:
+  remind-jake:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Send Wristband Reminder
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        echo "Reminding Jake about his wristband..."
+        
+        python3 << 'PYTHON_SCRIPT'
+        import json
+        import urllib.request
+        import urllib.parse
+        import os
+        from datetime import datetime, timezone, timedelta
+        
+        # Get secrets from environment
+        bot_token = os.environ['TELEGRAM_BOT_TOKEN']
+        chat_id = os.environ['TELEGRAM_CHAT_ID']
+        
+        # Get current Melbourne time
+        melbourne_offset = timedelta(hours=11)
+        melbourne_tz = timezone(melbourne_offset)
+        now_melbourne = datetime.now(timezone.utc).astimezone(melbourne_tz)
+        current_hour = now_melbourne.hour
+        current_minute = now_melbourne.minute
+        
+        # Evening reminders (8pm-10pm) - Casual but building
+        evening_reminders = [
+            "🎸 Hey Jake! Quick reminder: Don't forget your wristband for tomorrow! (Unlike Radiohead, we don't want you to be a Creep without a ticket)",
+            "🎵 Jake mate, wristband check! Put it somewhere you'll see it in the morning. Maybe next to your phone? (Don't Stop Believin' you'll remember...)",
+            "🎤 Alright Jake, this is your 9pm wristband bulletin! Have you located it? Put it with your keys! (We Will Rock You... but only if you have your wristband)",
+            "🎶 Jake! Getting close to bedtime. WRISTBAND. ON. BEDSIDE. TABLE. NOW. (Or you'll be Livin' on a Prayer tomorrow morning)",
+            "🎸 JAKE. Last evening reminder. Put the bloody wristband in your pocket RIGHT NOW or you'll forget it. (Don't Let Me Down, mate)",
+        ]
+        
+        # Morning reminders (5:15am-6am) - ABSOLUTE CHAOS
+        morning_reminders = [
+            "⏰ JAKE WAKE UP! WRISTBAND CHECK! DO YOU HAVE IT?! (Time to Face The Music...literally)",
+            "🚨 JAKE! WRISTBAND! CHECK YOUR POCKET! CHECK YOUR BAG! (We're on the Highway to Hell if you forgot it)",
+            "‼️ MATE. WRISTBAND. NOW. Don't make me come over there! (You Shook Me All Night Long but did you pack your wristband?!)",
+            "🎪 JAKE FOR F*CK'S SAKE CHECK YOU HAVE YOUR WRISTBAND! (Don't Stop Me Now... from checking your wristband!)",
+            "💀 WRISTBAND STATUS: ??? JAKE STATUS: QUESTIONABLE. CONFIRM YOU HAVE IT! (Should I Stay or Should I Go... depends on that wristband mate)",
+            "🔥 JAKE! WRISTBAND IN HAND OR WE'RE SCREWED! (Every Breath You Take... make sure you're holding that wristband)",
+            "😱 JAKE THIS IS NOT A DRILL! WRISTBAND! SHOW ME THE WRISTBAND! (Come Together... with your f*cking wristband!)",
+            "🆘 JAKE! IF YOU DON'T HAVE THAT WRISTBAND I SWEAR TO GOD! (We're Not Gonna Take It... without your wristband!)",
+            "🚨🚨🚨 EMERGENCY WRISTBAND CHECK! JAKE! RESPOND! DO YOU HAVE IT?! (Under Pressure... to remember your wristband!)",
+            "⚠️ JAKE! WRISTBAND OR BUST! SERIOUS NOW MATE! (I Still Haven't Found What I'm Looking For... YOUR WRISTBAND!)",
+        ]
+        
+        # Determine which message to send based on time
+        if current_hour >= 20 and current_hour < 22:
+            # Evening (8pm-10pm)
+            # Calculate which evening reminder (0-4)
+            if current_hour == 20:
+                index = 0 if current_minute == 0 else 1
+            elif current_hour == 21:
+                index = 2 if current_minute == 0 else 3
+            else:  # 22:00
+                index = 4
+            message = evening_reminders[min(index, len(evening_reminders)-1)]
+        elif current_hour >= 5 and current_hour < 6:
+            # Morning (5:15am-6am)
+            # Every 5 minutes = 10 messages
+            reminder_index = ((current_minute - 15) // 5) if current_minute >= 15 else 0
+            message = morning_reminders[min(reminder_index, len(morning_reminders)-1)]
+        else:
+            # Shouldn't happen but just in case
+            message = "🎸 JAKE! WRISTBAND! (This message arrived at an unexpected time but the point stands!)"
+        
+        # Send to Telegram
+        telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = urllib.parse.urlencode({
+            'chat_id': chat_id,
+            'text': message,
+            'disable_web_page_preview': True
+        }).encode()
+        
+        req = urllib.request.Request(telegram_url, data=data)
+        
+        try:
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read())
+                if result.get('ok'):
+                    print(f"✅ Wristband reminder sent to Jake at {now_melbourne.strftime('%I:%M %p')}!")
+                else:
+                    print(f"Telegram error: {result}")
+        except Exception as e:
+            print(f"Error sending to Telegram: {e}")
+            exit(1)
+        PYTHON_SCRIPT
