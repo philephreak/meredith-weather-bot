@@ -101,35 +101,36 @@ jobs:
         ]
         
         # Determine which message to send based on time
-        if current_hour >= 19 and current_hour < 22:
-            # Evening (7:50pm-10pm) - 8 reminders
-            # Map to index 0-7 based on when the reminder runs
-            if current_hour == 19:  # 7:50pm
-                index = 0
-            elif current_hour == 20:  # 8:10, 8:30, 8:50
-                if current_minute < 20:
-                    index = 1
-                elif current_minute < 40:
-                    index = 2
-                else:
-                    index = 3
-            elif current_hour == 21:  # 9:10, 9:30, 9:50
-                if current_minute < 20:
-                    index = 4
-                elif current_minute < 40:
-                    index = 5
-                else:
-                    index = 6
-            else:  # 22:00 (10pm)
-                index = 7
-            message = evening_reminders[min(index, len(evening_reminders)-1)]
-        elif current_hour >= 5 and current_hour < 6:
-            # Morning (5:15am-6am)
-            # Every 5 minutes = 10 messages
-            reminder_index = ((current_minute - 15) // 5) if current_minute >= 15 else 0
-            message = morning_reminders[min(reminder_index, len(morning_reminders)-1)]
+        # Create a simple mapping based on hour and minute
+        time_key = (current_hour, current_minute)
+        
+        # Evening reminders mapping (hour, minute) -> index
+        evening_times = [
+            (19, 50),  # 7:50 PM - index 0
+            (20, 10),  # 8:10 PM - index 1
+            (20, 30),  # 8:30 PM - index 2
+            (20, 50),  # 8:50 PM - index 3
+            (21, 10),  # 9:10 PM - index 4
+            (21, 30),  # 9:30 PM - index 5
+            (21, 50),  # 9:50 PM - index 6
+            (22, 0),   # 10:00 PM - index 7
+        ]
+        
+        # Morning reminders mapping (hour, minute) -> index
+        morning_times = [
+            (5, 15), (5, 20), (5, 25), (5, 30), (5, 35),
+            (5, 40), (5, 45), (5, 50), (5, 55), (6, 0)
+        ]
+        
+        # Find which message to send
+        if time_key in evening_times:
+            index = evening_times.index(time_key)
+            message = evening_reminders[index]
+        elif time_key in morning_times:
+            index = morning_times.index(time_key)
+            message = morning_reminders[index]
         else:
-            # Shouldn't happen but just in case
+            # Fallback (shouldn't happen but just in case)
             message = "🎸 JAKE! WRISTBAND! (This message arrived at an unexpected time but the point stands!)"
         
         # Send to Telegram
