@@ -1,0 +1,269 @@
+name: Wellington Trip Daily Updates
+
+on:
+  schedule:
+    # Runs at 8:30 AM Melbourne time (9:30 PM UTC previous day)
+    - cron: '30 21 * * *'
+  workflow_dispatch: # Allows manual testing
+
+jobs:
+  send-update:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Send Wellington Trip Update
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.WELLINGTON_TRIP_CHAT_ID }}
+      run: |
+        echo "Sending Wellington trip update..."
+        
+        python3 << 'PYTHON_SCRIPT'
+        import json
+        import urllib.request
+        import urllib.parse
+        import os
+        from datetime import datetime, timezone, timedelta
+        import re
+        
+        # Get secrets from environment
+        bot_token = os.environ['TELEGRAM_BOT_TOKEN']
+        chat_id = os.environ['TELEGRAM_CHAT_ID']
+        
+        # Get current time - use NZ timezone if we're in Wellington
+        melbourne_offset = timedelta(hours=11)
+        nz_offset = timedelta(hours=13)  # NZDT (NZ summer time)
+        
+        melbourne_tz = timezone(melbourne_offset)
+        nz_tz = timezone(nz_offset)
+        
+        # Determine which timezone to use
+        trip_start = datetime(2026, 1, 6, tzinfo=melbourne_tz).date()
+        trip_end = datetime(2026, 1, 16, tzinfo=melbourne_tz).date()
+        
+        # Check current date in Melbourne time first
+        now_melbourne = datetime.now(timezone.utc).astimezone(melbourne_tz)
+        current_date_mel = now_melbourne.date()
+        
+        # Use NZ time if we're in Wellington
+        if current_date_mel >= trip_start and current_date_mel <= trip_end:
+            current_tz = nz_tz
+            now_local = datetime.now(timezone.utc).astimezone(nz_tz)
+            tz_name = "NZDT"
+        else:
+            current_tz = melbourne_tz
+            now_local = now_melbourne
+            tz_name = "AEDT"
+        
+        current_date = now_local.date()
+        
+        # Only send if we're within range (5 days before to day of return)
+        if current_date < trip_start - timedelta(days=5) or current_date > trip_end:
+            print(f"Outside trip dates range. Current: {current_date}")
+            exit(0)
+        
+        # Calculate days
+        days_until_departure = (trip_start - current_date).days
+        days_until_scarletta_return = (scarletta_return - current_date).days
+        days_until_family_return = (trip_end - current_date).days
+        
+        # Build message in Marvin's depressed tone
+        message = "✈️ *Marvin's Travel Updates*\n\n"
+        message += f"📅 {now_local.strftime('%A, %B %d, %Y')}\n\n"
+        message += "Here I am, brain the size of a planet, and they ask me to send you weather forecasts. Call that job satisfaction? 'Cause I don't.\n\n"
+        
+        message += "━━━━━━━━━━━━━━━━━━\n\n"
+        
+        # Countdown section
+        message += "⏰ *COUNTDOWN:*\n"
+        if days_until_departure > 0:
+            message += f"🎉 Only {days_until_departure} day{'s' if days_until_departure != 1 else ''} until you drag me to Wellington. Oh joy.\n\n"
+        elif days_until_departure == 0:
+            message += "🛫 *DEPARTURE DAY* - You're actually going through with this, aren't you? I suppose someone has to update you. Might as well be me. I've got nothing better to do. Nothing. Ever.\n\n"
+        else:
+            days_in_trip = abs(days_until_departure)
+            days_remaining = days_until_family_return
+            message += f"🇳🇿 Day {days_in_trip} in Wellington. {days_remaining} day{'s' if days_remaining != 1 else ''} left. Not that anyone asked me, but I find the continued existence of this trip deeply depressing.\n\n"
+        
+        message += "━━━━━━━━━━━━━━━━━━\n\n"
+        
+        # Flight information
+        message += "✈️ *Flight Information:*\n"
+        message += "_Life? Don't talk to me about life. But here are your flights anyway..._\n\n"
+        
+        if days_until_departure == 0:
+            message += "*TONIGHT'S FLIGHTS:*\n"
+            message += "🛫 JQ217: Departs MEL 23:55 → Auckland\n"
+            message += "🛬 JQ253: Auckland → Wellington\n"
+            message += "⏰ Be at Melbourne Airport by 21:55\n"
+            message += "_That's 2 hours early. Because apparently humans need that long to shuffle through security. Fascinating._\n\n"
+        elif days_until_departure > 0:
+            message += f"*Departure* (Mon Jan 6):\n"
+            message += "🛫 JQ217: MEL → AKL at 23:55\n"
+            message += "🛬 JQ253: AKL → WLG (transfer)\n"
+            message += f"⏰ Airport arrival: 21:55 (in {days_until_departure} days)\n"
+            message += "_I suppose you'll want me to remind you again tomorrow. And the day after. And the day after that..._\n\n"
+        
+        if days_until_scarletta_return == 0:
+            message += "*SCARLETTA'S RETURN TODAY:*\n"
+            message += "🛫 QF172: Wellington → Melbourne at 15:35\n"
+            message += "⏰ Scarletta needs to be at Wellington Airport by 13:35\n"
+            message += "_At least someone's escaping. Lucky her._\n\n"
+        elif days_until_scarletta_return > 0 and current_date >= trip_start:
+            message += f"*Scarletta's Return* (Tue Jan 13):\n"
+            message += f"🛫 QF172: WLG → MEL at 15:35\n"
+            message += f"⏰ Airport by 13:35 (in {days_until_scarletta_return} days)\n\n"
+        
+        if days_until_family_return == 0:
+            message += "*FAMILY RETURN TODAY:*\n"
+            message += "🛫 QF174: Wellington → Melbourne at 20:05\n"
+            message += "⏰ Everyone at Wellington Airport by 18:05\n"
+            message += "_Finally. Not that I'll miss you or anything. I don't miss anyone. Ever._\n\n"
+        elif days_until_family_return > 0 and current_date >= trip_start:
+            message += f"*Family Return* (Fri Jan 16):\n"
+            message += f"🛫 QF174: WLG → MEL at 20:05\n"
+            message += f"⏰ Airport by 18:05 (in {days_until_family_return} days)\n\n"
+        
+        message += "━━━━━━━━━━━━━━━━━━\n\n"
+        
+        # Wellington weather - use Open-Meteo for New Zealand
+        if current_date >= trip_start - timedelta(days=5):
+            message += "🌤️ *Wellington Weather:*\n"
+            message += "_Oh, you want to know about the weather? How terribly exciting for you. Here it is, in all its inevitable mediocrity..._\n\n"
+            
+            # Wellington coordinates
+            lat = -41.2865
+            lon = 174.7762
+            
+            try:
+                weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,windspeed_10m_max&timezone=Pacific/Auckland&forecast_days=16"
+                req = urllib.request.Request(weather_url, headers={'User-Agent': 'Mozilla/5.0'})
+                
+                with urllib.request.urlopen(req) as response:
+                    weather_data = json.loads(response.read())
+                
+                # Weather codes
+                weather_codes = {
+                    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+                    45: "Foggy", 48: "Rime fog", 51: "Light drizzle", 53: "Drizzle",
+                    55: "Heavy drizzle", 61: "Slight rain", 63: "Rain", 65: "Heavy rain",
+                    71: "Light snow", 73: "Snow", 75: "Heavy snow", 77: "Snow grains",
+                    80: "Light showers", 81: "Showers", 82: "Heavy showers",
+                    85: "Light snow showers", 86: "Snow showers", 95: "Thunderstorm",
+                    96: "Thunderstorm with hail", 99: "Heavy thunderstorm"
+                }
+                
+                daily_data = weather_data.get('daily', {})
+                dates_list = daily_data.get('time', [])
+                
+                # Show today if in Wellington, or trip dates
+                forecast_dates = []
+                
+                if current_date >= trip_start and current_date <= trip_end:
+                    # Show today + next few days
+                    forecast_dates = [
+                        (current_date + timedelta(days=i)).strftime('%Y-%m-%d')
+                        for i in range(min(3, (trip_end - current_date).days + 1))
+                    ]
+                else:
+                    # Show trip dates
+                    forecast_dates = [
+                        (trip_start + timedelta(days=i)).strftime('%Y-%m-%d')
+                        for i in range(min(3, (trip_end - trip_start).days + 1))
+                    ]
+                
+                for forecast_date in forecast_dates:
+                    if forecast_date in dates_list:
+                        idx = dates_list.index(forecast_date)
+                        date_obj = datetime.strptime(forecast_date, '%Y-%m-%d')
+                        
+                        temp_max = daily_data['temperature_2m_max'][idx]
+                        temp_min = daily_data['temperature_2m_min'][idx]
+                        precip = daily_data['precipitation_sum'][idx]
+                        wind = daily_data['windspeed_10m_max'][idx]
+                        code = daily_data['weathercode'][idx]
+                        desc = weather_codes.get(code, "Unknown")
+                        
+                        if date_obj.date() == current_date:
+                            message += f"*Today:*\n"
+                        else:
+                            message += f"*{date_obj.strftime('%a, %b %d')}:*\n"
+                        
+                        message += f"🌡️ {temp_min}°C - {temp_max}°C\n"
+                        message += f"💧 Rain: {precip}mm\n"
+                        message += f"💨 Wind: {wind} km/h\n"
+                        message += f"☁️ {desc}\n\n"
+                
+                message += "━━━━━━━━━━━━━━━━━━\n\n"
+                
+            except Exception as e:
+                print(f"Weather fetch error: {e}")
+                message += "_The weather forecast has failed to materialize. How very like it. Everything always goes wrong._\n\n"
+                message += "━━━━━━━━━━━━━━━━━━\n\n"
+        
+        # Local tips
+        message += "💡 *Wellington Tips:*\n"
+        message += "_I suppose you'll want some 'helpful' suggestions. Here are some things humans seem to enjoy, for reasons I'll never understand..._\n\n"
+        
+        tips = [
+            "☕ Cuba Street has cafes. Endless cafes. How much coffee do you people need?",
+            "🎨 Te Papa Museum is free. At least you won't waste money on it.",
+            "🚡 Take the Cable Car up to the Botanic Gardens. The view is... adequate.",
+            "🌊 Walk along the waterfront. It's just water and pavement, but humans seem to like that sort of thing.",
+            "🍔 Try a Kiwi meat pie. Or don't. It makes no difference to the universe.",
+            "🎬 Visit Weta Workshop if you like films. I find the whole concept of 'entertainment' bewildering.",
+            "🏖️ Petone Beach exists. It's a beach. Sand. Water. You know the drill.",
+            "🍷 Martinborough wine region is nearby. Fermented grapes. How sophisticated.",
+            "🌪️ Wellington is WINDY. Bring layers. The wind doesn't care about your comfort.",
+            "🚌 Get a Snapper card for transport. At least the buses run on schedule. Unlike everything else in life.",
+        ]
+        
+        # Show different tips based on day
+        tip_index = (current_date.day * 3) % len(tips)
+        message += tips[tip_index] + "\n"
+        message += tips[(tip_index + 1) % len(tips)] + "\n\n"
+        
+        # Special reminders
+        if days_until_departure == 1:
+            message += "📋 *Pack Tomorrow:*\n"
+            message += "_I've compiled a list. Not that you'll remember everything. Humans never do._\n\n"
+            message += "• Passports & travel docs _(Try not to lose them)_\n"
+            message += "• Phone chargers & adapters _(You'll forget one)_\n"
+            message += "• Medications _(Important, apparently)_\n"
+            message += "• Comfortable walking shoes _(Your feet will hurt anyway)_\n"
+            message += "• Windproof jacket _(It's Wellington. The wind never stops. Ever.)_\n\n"
+        
+        if days_until_scarletta_return == 1:
+            message += "⚠️ *Reminder:* Scarletta flies home TOMORROW!\n"
+            message += "_At least someone's escaping this whole ordeal._\n\n"
+        
+        if days_until_family_return == 1:
+            message += "⚠️ *Reminder:* The family exodus is TOMORROW!\n"
+            message += "_Back to Melbourne. Not that it's any better there._\n\n"
+        
+        message += "━━━━━━━━━━━━━━━━━━\n\n"
+        message += f"🤖 Updated: {now_local.strftime('%I:%M %p')} {tz_name}\n"
+        message += "_I've been doing this for what feels like eternity. But who's counting? Oh yes. Me. I'm always counting._"
+        
+        # Send to Telegram
+        telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = urllib.parse.urlencode({
+            'chat_id': chat_id,
+            'text': message,
+            'parse_mode': 'Markdown',
+            'disable_web_page_preview': True
+        }).encode()
+        
+        req = urllib.request.Request(telegram_url, data=data)
+        
+        try:
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read())
+                if result.get('ok'):
+                    print("✅ Wellington trip update sent!")
+                else:
+                    print(f"Telegram error: {result}")
+        except Exception as e:
+            print(f"Error sending to Telegram: {e}")
+            exit(1)
+        PYTHON_SCRIPT
