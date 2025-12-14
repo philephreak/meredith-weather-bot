@@ -126,8 +126,8 @@ jobs:
         
         message += "━━━━━━━━━━━━━━━━━━\n\n"
         
-        # Wellington weather - use Open-Meteo for New Zealand
-        if current_date >= trip_start - timedelta(days=5):
+        # Wellington weather - show if within 16 days of trip
+        if (trip_start - current_date).days <= 16:
             message += "🌤️ *Wellington Weather:*\n"
             message += "_Oh, you want to know about the weather? How terribly exciting for you. Here it is, in all its inevitable mediocrity..._\n\n"
             
@@ -200,10 +200,43 @@ jobs:
                 print(f"Weather fetch error: {e}")
                 message += "_The weather forecast has failed to materialize. How very like it. Everything always goes wrong._\n\n"
                 message += "━━━━━━━━━━━━━━━━━━\n\n"
+        else:
+            message += "🌤️ *Wellington Weather:*\n"
+            message += f"_Weather forecast available in {(trip_start - current_date).days - 16} days. Not that it matters. Weather is just another thing to disappoint you._\n\n"
+            message += "━━━━━━━━━━━━━━━━━━\n\n"
         
-        # Local tips
-        message += "💡 *Wellington Tips:*\n"
-        message += "_I suppose you'll want some 'helpful' suggestions. Here are some things humans seem to enjoy, for reasons I'll never understand..._\n\n"
+        # Wellington Info & Activities - show before the trip
+        if current_date < trip_start:
+            message += "🇳🇿 *About Wellington:*\n"
+            message += "_Since you insist on going, here's some information. I've calculated exactly how underwhelming each activity will be..._\n\n"
+            
+            wellington_facts = [
+                "🏙️ Wellington is NZ's capital and sits on a major fault line. How reassuring.",
+                "🌪️ Known as 'Windy Wellington' - averages 178 days of gale-force winds per year. Pack accordingly.",
+                "🎬 Home to Weta Workshop (Lord of the Rings, Avatar). At least the fiction is better than reality.",
+                "☕ Has more cafes per capita than NYC. Impressive, if you care about such things.",
+                "🦎 Zealandia sanctuary has tuatara - living fossils unchanged for 200 million years. I can relate.",
+                "🏛️ Te Papa is the 6th most visited museum in Oceania. That's... a statistic.",
+                "🚡 The Cable Car has run since 1902. Even it's depressed about still working.",
+                "🌊 Wellington Harbour was formed by earthquakes. The earth itself is trying to escape.",
+            ]
+            
+            # Show 2 facts based on the day
+            fact_index = (current_date.day * 2) % len(wellington_facts)
+            message += wellington_facts[fact_index] + "\n"
+            message += wellington_facts[(fact_index + 1) % len(wellington_facts)] + "\n\n"
+            
+            message += "━━━━━━━━━━━━━━━━━━\n\n"
+        
+        # Local tips and activities
+        if current_date >= trip_start:
+            # During trip - daily tips
+            message += "💡 *Today's Suggestions:*\n"
+            message += "_Things you could do. Or not. The universe doesn't care either way..._\n\n"
+        else:
+            # Before trip - planning suggestions
+            message += "💡 *Things to Consider:*\n"
+            message += "_I suppose you'll want some 'helpful' suggestions. Here are some things humans seem to enjoy, for reasons I'll never understand..._\n\n"
         
         tips = [
             "☕ Cuba Street has cafes. Endless cafes. How much coffee do you people need?",
