@@ -53,60 +53,60 @@ jobs:
         days_until_scarletta = (scarletta_return - current_date).days
         days_until_family = (trip_end - current_date).days
         
-        msg = "✈️ *Marvin's Travel Updates*\\n\\n"
-        msg += f"📅 {now_local.strftime('%A, %B %d, %Y')}\\n\\n"
-        msg += "Here I am, brain the size of a planet, and they ask me to send you weather forecasts. Call that job satisfaction? 'Cause I don't.\\n\\n"
-        msg += "━━━━━━━━━━━━━━━━━━\\n\\n"
+        msg = "✈️ *Marvin's Travel Updates*\n\n"
+        msg += f"📅 {now_local.strftime('%A, %B %d, %Y')}\n\n"
+        msg += "Here I am, brain the size of a planet, and they ask me to send you weather forecasts. Call that job satisfaction? 'Cause I don't.\n\n"
+        msg += "━━━━━━━━━━━━━━━━━━\n\n"
         
-        msg += "⏰ *COUNTDOWN:*\\n"
+        msg += "⏰ *COUNTDOWN:*\n"
         if days_until_departure > 0:
-            msg += f"🎉 Only {days_until_departure} day{'s' if days_until_departure != 1 else ''} until you drag me to Wellington. Oh joy.\\n\\n"
+            msg += f"🎉 Only {days_until_departure} day{'s' if days_until_departure != 1 else ''} until you drag me to Wellington. Oh joy.\n\n"
         elif days_until_departure == 0:
-            msg += "🛫 *DEPARTURE DAY* \\- You're actually going through with this, aren't you?\\n\\n"
+            msg += "🛫 *DEPARTURE DAY* - You're actually going through with this, aren't you?\n\n"
         else:
             days_in = abs(days_until_departure)
-            msg += f"🇳🇿 Day {days_in} in Wellington. {days_until_family} day{'s' if days_until_family != 1 else ''} left. Not that anyone asked me.\\n\\n"
+            msg += f"🇳🇿 Day {days_in} in Wellington. {days_until_family} day{'s' if days_until_family != 1 else ''} left. Not that anyone asked me.\n\n"
         
-        msg += "━━━━━━━━━━━━━━━━━━\\n\\n"
+        msg += "━━━━━━━━━━━━━━━━━━\n\n"
         
-        msg += "✈️ *Flight Information:*\\n"
-        msg += "_Life? Don't talk to me about life. But here are your flights anyway..._\\n\\n"
+        msg += "✈️ *Flight Information:*\n"
+        msg += "_Life? Don't talk to me about life. But here are your flights anyway..._\n\n"
         
         if days_until_departure == 0:
-            msg += "*TONIGHT'S FLIGHTS:*\\n"
-            msg += "🛫 JQ217: MEL 23:55 → Auckland\\n"
-            msg += "🛬 JQ253: Auckland → Wellington\\n"
-            msg += "⏰ Be at Melbourne Airport by 21:55\\n\\n"
+            msg += "*TONIGHT'S FLIGHTS:*\n"
+            msg += "🛫 JQ217: MEL 23:55 → Auckland\n"
+            msg += "🛬 JQ253: Auckland → Wellington\n"
+            msg += "⏰ Be at Melbourne Airport by 21:55\n\n"
         elif days_until_departure > 0:
-            msg += f"*Departure* (Mon Jan 6):\\n"
-            msg += "🛫 JQ217: MEL → AKL at 23:55\\n"
-            msg += "🛬 JQ253: AKL → WLG (transfer)\\n"
-            msg += f"⏰ Airport: 21:55 (in {days_until_departure} days)\\n\\n"
+            msg += f"*Departure* (Mon Jan 6):\n"
+            msg += "🛫 JQ217: MEL → AKL at 23:55\n"
+            msg += "🛬 JQ253: AKL → WLG (transfer)\n"
+            msg += f"⏰ Airport: 21:55 (in {days_until_departure} days)\n\n"
         
         if current_date >= trip_start:
             if days_until_scarletta == 0:
-                msg += "*SCARLETTA'S RETURN TODAY:*\\n"
-                msg += "🛫 QF172: WLG → MEL at 15:35\\n"
-                msg += "⏰ Airport by 13:35\\n\\n"
+                msg += "*SCARLETTA'S RETURN TODAY:*\n"
+                msg += "🛫 QF172: WLG → MEL at 15:35\n"
+                msg += "⏰ Airport by 13:35\n\n"
             elif days_until_scarletta > 0:
-                msg += f"*Scarletta's Return* (Tue Jan 13):\\n"
-                msg += f"🛫 QF172: WLG → MEL at 15:35\\n"
-                msg += f"⏰ Airport by 13:35 (in {days_until_scarletta} days)\\n\\n"
+                msg += f"*Scarletta's Return* (Tue Jan 13):\n"
+                msg += f"🛫 QF172: WLG → MEL at 15:35\n"
+                msg += f"⏰ Airport by 13:35 (in {days_until_scarletta} days)\n\n"
             
             if days_until_family == 0:
-                msg += "*FAMILY RETURN TODAY:*\\n"
-                msg += "🛫 QF174: WLG → MEL at 20:05\\n"
-                msg += "⏰ Airport by 18:05\\n\\n"
+                msg += "*FAMILY RETURN TODAY:*\n"
+                msg += "🛫 QF174: WLG → MEL at 20:05\n"
+                msg += "⏰ Airport by 18:05\n\n"
             elif days_until_family > 0:
-                msg += f"*Family Return* (Fri Jan 16):\\n"
-                msg += f"🛫 QF174: WLG → MEL at 20:05\\n"
-                msg += f"⏰ Airport by 18:05 (in {days_until_family} days)\\n\\n"
+                msg += f"*Family Return* (Fri Jan 16):\n"
+                msg += f"🛫 QF174: WLG → MEL at 20:05\n"
+                msg += f"⏰ Airport by 18:05 (in {days_until_family} days)\n\n"
         
-        msg += "━━━━━━━━━━━━━━━━━━\\n\\n"
+        msg += "━━━━━━━━━━━━━━━━━━\n\n"
         
         if days_until_departure <= 16 and days_until_departure >= -10:
-            msg += "🌤️ *Wellington Weather:*\\n"
-            msg += "_Oh, you want weather? How exciting..._\\n\\n"
+            msg += "🌤️ *Wellington Weather:*\n"
+            msg += "_Oh, you want weather? How exciting..._\n\n"
             
             try:
                 weather_url = "https://api.open-meteo.com/v1/forecast?latitude=-41.2865&longitude=174.7762&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,windspeed_10m_max&timezone=Pacific/Auckland&forecast_days=16"
@@ -142,52 +142,52 @@ jobs:
                         desc = weather_codes.get(code, "Unknown")
                         
                         if fdate == current_date:
-                            msg += "*Today:*\\n"
+                            msg += "*Today:*\n"
                         else:
-                            msg += f"*{fdate.strftime('%a, %b %d')}:*\\n"
+                            msg += f"*{fdate.strftime('%a, %b %d')}:*\n"
                         
-                        msg += f"🌡️ {tmin}°C \\- {tmax}°C\\n"
-                        msg += f"💧 Rain: {rain}mm\\n"
-                        msg += f"💨 Wind: {wind} km/h\\n"
-                        msg += f"☁️ {desc}\\n\\n"
+                        msg += f"🌡️ {tmin}°C - {tmax}°C\n"
+                        msg += f"💧 Rain: {rain}mm\n"
+                        msg += f"💨 Wind: {wind} km/h\n"
+                        msg += f"☁️ {desc}\n\n"
                 
-                msg += "━━━━━━━━━━━━━━━━━━\\n\\n"
+                msg += "━━━━━━━━━━━━━━━━━━\n\n"
                 
             except Exception as e:
                 print(f"Weather error: {e}")
-                msg += "_Weather forecast unavailable. How typical._\\n\\n"
-                msg += "━━━━━━━━━━━━━━━━━━\\n\\n"
+                msg += "_Weather forecast unavailable. How typical._\n\n"
+                msg += "━━━━━━━━━━━━━━━━━━\n\n"
         elif days_until_departure > 16:
-            msg += "🌤️ *Wellington Weather:*\\n"
-            msg += f"_Forecast available in {days_until_departure - 16} days. Not that it matters._\\n\\n"
-            msg += "━━━━━━━━━━━━━━━━━━\\n\\n"
+            msg += "🌤️ *Wellington Weather:*\n"
+            msg += f"_Forecast available in {days_until_departure - 16} days. Not that it matters._\n\n"
+            msg += "━━━━━━━━━━━━━━━━━━\n\n"
         
         if current_date < trip_start:
-            msg += "🇳🇿 *About Wellington:*\\n"
-            msg += "_Since you insist on going, here's some information..._\\n\\n"
+            msg += "🇳🇿 *About Wellington:*\n"
+            msg += "_Since you insist on going, here's some information..._\n\n"
             
             facts = [
                 "🏙️ Wellington is NZ's capital and sits on a major fault line. How reassuring.",
-                "🌪️ Known as 'Windy Wellington' \\- averages 178 days of gales per year.",
+                "🌪️ Known as 'Windy Wellington' - averages 178 days of gales per year.",
                 "🎬 Home to Weta Workshop (LOTR, Avatar). At least fiction is better than reality.",
                 "☕ More cafes per capita than NYC. If you care about such things.",
-                "🦎 Zealandia has tuatara \\- unchanged for 200 million years. I can relate.",
+                "🦎 Zealandia has tuatara - unchanged for 200 million years. I can relate.",
                 "🏛️ Te Papa is the 6th most visited museum in Oceania. That's... a statistic.",
                 "🚡 The Cable Car has run since 1902. Even it's depressed.",
                 "🌊 Wellington Harbour was formed by earthquakes. Earth itself trying to escape.",
             ]
             
             fact_idx = (current_date.day * 2) % len(facts)
-            msg += facts[fact_idx] + "\\n"
-            msg += facts[(fact_idx + 1) % len(facts)] + "\\n\\n"
-            msg += "━━━━━━━━━━━━━━━━━━\\n\\n"
+            msg += facts[fact_idx] + "\n"
+            msg += facts[(fact_idx + 1) % len(facts)] + "\n\n"
+            msg += "━━━━━━━━━━━━━━━━━━\n\n"
         
         if current_date >= trip_start:
-            msg += "💡 *Today's Suggestions:*\\n"
+            msg += "💡 *Today's Suggestions:*\n"
         else:
-            msg += "💡 *Things to Consider:*\\n"
+            msg += "💡 *Things to Consider:*\n"
         
-        msg += "_Things humans seem to enjoy..._\\n\\n"
+        msg += "_Things humans seem to enjoy..._\n\n"
         
         tips = [
             "☕ Cuba Street has cafes. Endless cafes. How much coffee do you need?",
@@ -203,33 +203,33 @@ jobs:
         ]
         
         tip_idx = (current_date.day * 3) % len(tips)
-        msg += tips[tip_idx] + "\\n"
-        msg += tips[(tip_idx + 1) % len(tips)] + "\\n\\n"
+        msg += tips[tip_idx] + "\n"
+        msg += tips[(tip_idx + 1) % len(tips)] + "\n\n"
         
         if days_until_departure == 1:
-            msg += "📋 *Pack Tomorrow:*\\n"
-            msg += "_I've compiled a list. You'll forget something._\\n\\n"
-            msg += "• Passports & docs\\n"
-            msg += "• Chargers & adapters\\n"
-            msg += "• Medications\\n"
-            msg += "• Comfortable shoes\\n"
-            msg += "• Windproof jacket\\n\\n"
+            msg += "📋 *Pack Tomorrow:*\n"
+            msg += "_I've compiled a list. You'll forget something._\n\n"
+            msg += "• Passports & docs\n"
+            msg += "• Chargers & adapters\n"
+            msg += "• Medications\n"
+            msg += "• Comfortable shoes\n"
+            msg += "• Windproof jacket\n\n"
         
         if days_until_scarletta == 1:
-            msg += "⚠️ Scarletta flies home TOMORROW!\\n\\n"
+            msg += "⚠️ Scarletta flies home TOMORROW!\n\n"
         
         if days_until_family == 1:
-            msg += "⚠️ Family exodus TOMORROW!\\n\\n"
+            msg += "⚠️ Family exodus TOMORROW!\n\n"
         
-        msg += "━━━━━━━━━━━━━━━━━━\\n\\n"
-        msg += f"🤖 Updated: {now_local.strftime('%I:%M %p')} {tz_name}\\n"
+        msg += "━━━━━━━━━━━━━━━━━━\n\n"
+        msg += f"🤖 Updated: {now_local.strftime('%I:%M %p')} {tz_name}\n"
         msg += "_I've been doing this for eternity. But who's counting? Me. Always me._"
         
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         data = urllib.parse.urlencode({
             'chat_id': chat_id,
             'text': msg,
-            'parse_mode': 'MarkdownV2'
+            'parse_mode': 'Markdown'
         }).encode()
         
         req = urllib.request.Request(url, data=data)
