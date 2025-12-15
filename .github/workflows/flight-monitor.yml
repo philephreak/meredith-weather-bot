@@ -1,0 +1,164 @@
+name: Marvin's Flight Monitor
+
+on:
+  schedule:
+    # Check every 2 hours on flight days (from 4am to 10pm Melbourne time)
+    # Jan 6 (departure day) - 4am, 6am, 8am, 10am, 12pm, 2pm, 4pm, 6pm, 8pm, 10pm Melbourne
+    - cron: '0 17,19,21,23 5 1 *'  # 4am, 6am, 8am, 10am on Jan 6 (UTC Jan 5)
+    - cron: '0 1,3,5,7,9,11 6 1 *'  # 12pm, 2pm, 4pm, 6pm, 8pm, 10pm on Jan 6 (UTC Jan 6)
+    
+    # Jan 13 (Scarletta's return)
+    - cron: '0 17,19,21,23 12 1 *'  # 4am, 6am, 8am, 10am on Jan 13 (UTC Jan 12)
+    - cron: '0 1,3 13 1 *'  # 12pm, 2pm on Jan 13 (UTC Jan 13)
+    
+    # Jan 16 (Family return)
+    - cron: '0 17,19,21,23 15 1 *'  # 4am, 6am, 8am, 10am on Jan 16 (UTC Jan 15)
+    - cron: '0 1,3,5,7,9 16 1 *'  # 12pm, 2pm, 4pm, 6pm, 8pm on Jan 16 (UTC Jan 16)
+  
+  workflow_dispatch:
+
+jobs:
+  check-flights:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Check Flight Status
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.WELLINGTON_TRIP_CHAT_ID }}
+        AVIATIONSTACK_API_KEY: ${{ secrets.AVIATIONSTACK_API_KEY }}
+      run: |
+        python3 << 'ENDOFPYTHON'
+        import json
+        import urllib.request
+        import urllib.parse
+        import os
+        from datetime import datetime, timezone, timedelta
+        
+        bot_token = os.environ['TELEGRAM_BOT_TOKEN']
+        chat_id = os.environ['TELEGRAM_CHAT_ID']
+        api_key = os.environ['AVIATIONSTACK_API_KEY']
+        
+        melbourne_tz = timezone(timedelta(hours=11))
+        nz_tz = timezone(timedelta(hours=13))
+        
+        now_utc = datetime.now(timezone.utc)
+        now_melbourne = now_utc.astimezone(melbourne_tz)
+        current_date = now_melbourne.date()
+        
+        # Flight details
+        flights = []
+        
+        # Determine which flights to check based on current date
+        if current_date == datetime(2026, 1, 6).date():
+            # Departure day
+            flights = [
+                {'number': 'JQ217', 'route': 'MEL → AKL', 'time': '23:55'},
+                {'number': 'JQ253', 'route': 'AKL → WLG', 'time': 'TBA'}
+            ]
+        elif current_date == datetime(2026, 1, 13).date():
+            # Scarletta's return
+            flights = [
+                {'number': 'QF172', 'route': 'WLG → MEL', 'time': '15:35'}
+            ]
+        elif current_date == datetime(2026, 1, 16).date():
+            # Family return
+            flights = [
+                {'number': 'QF174', 'route': 'WLG → MEL', 'time': '20:05'}
+            ]
+        
+        if not flights:
+            print("No flights to check today")
+            exit(0)
+        
+        print(f"Checking {len(flights)} flights for {current_date}")
+        
+        # Build message
+        msg = "✈️ *Marvin's Flight Status Update*\n\n"
+        msg += "Oh good, more things to worry about. Here's the latest on your flights...\n\n"
+        msg += "━━━━━━━━━━━━━━━━━━\n\n"
+        
+        any_issues = False
+        
+        for flight in flights:
+            flight_num = flight['number']
+            
+            try:
+                # Call Aviationstack API
+                url = f"http://api.aviationstack.com/v1/flights?access_key={api_key}&flight_iata={flight_num}"
+                
+                with urllib.request.urlopen(url) as response:
+                    data = json.loads(response.read())
+                
+                if data.get('data') and len(data['data']) > 0:
+                    flight_data = data['data'][0]
+                    
+                    status = flight_data.get('flight_status', 'unknown')
+                    dep_delay = flight_data.get('dep_delayed', 0) or 0
+                    arr_delay = flight_data.get('arr_delayed', 0) or 0
+                    
+                    msg += f"*Flight {flight_num}* ({flight['route']})\n"
+                    
+                    if status == 'cancelled':
+                        msg += "🚨 *CANCELLED*\n"
+                        msg += "_Well, isn't that just perfect. Of course it's cancelled. Why would anything go right?_\n\n"
+                        any_issues = True
+                    elif status == 'diverted':
+                        msg += "🚨 *DIVERTED*\n"
+                        msg += "_Diverted. Because apparently the planned destination was too straightforward._\n\n"
+                        any_issues = True
+                    elif dep_delay > 30 or arr_delay > 30:
+                        delay_mins = max(dep_delay, arr_delay)
+                        msg += f"⚠️ *DELAYED* - {delay_mins} minutes\n"
+                        msg += f"_Delayed by {delay_mins} minutes. I'd say I'm surprised, but that would be a lie._\n\n"
+                        any_issues = True
+                    elif status == 'active':
+                        msg += "✈️ Status: In Flight\n"
+                        msg += "_Currently airborne. At least something's working as intended._\n\n"
+                    elif status == 'landed':
+                        msg += "✅ Status: Landed\n"
+                        msg += "_Landed safely. Miracles do happen, apparently._\n\n"
+                    elif status == 'scheduled':
+                        msg += "✅ Status: On Time\n"
+                        msg += "_Scheduled departure at {flight['time']}. For now. Things can still go wrong._\n\n"
+                    else:
+                        msg += f"Status: {status}\n"
+                        msg += "_Status unclear. How typical._\n\n"
+                else:
+                    msg += f"*Flight {flight_num}* ({flight['route']})\n"
+                    msg += "_No flight data available. The universe conspires against me as usual._\n\n"
+                
+            except Exception as e:
+                print(f"Error checking {flight_num}: {e}")
+                msg += f"*Flight {flight_num}* ({flight['route']})\n"
+                msg += "_Unable to check status. Systems failing. How predictable._\n\n"
+        
+        msg += "━━━━━━━━━━━━━━━━━━\n\n"
+        
+        if not any_issues:
+            msg += "_Everything appears to be on schedule. Don't get too comfortable, though. There's still plenty of time for things to go wrong._\n\n"
+        
+        msg += f"🤖 Checked: {now_melbourne.strftime('%I:%M %p AEDT')}\n"
+        msg += "_I'll keep monitoring. Because apparently that's my purpose in this miserable existence._"
+        
+        # Send to Telegram
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = urllib.parse.urlencode({
+            'chat_id': chat_id,
+            'text': msg,
+            'parse_mode': 'Markdown'
+        }).encode()
+        
+        req = urllib.request.Request(url, data=data)
+        
+        try:
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read())
+                if result.get('ok'):
+                    print("✅ Flight status sent!")
+                else:
+                    print(f"Error: {result}")
+        except Exception as e:
+            print(f"Send error: {e}")
+            exit(1)
+        ENDOFPYTHON
