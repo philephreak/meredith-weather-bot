@@ -164,7 +164,18 @@ jobs:
         
         if current_date < trip_start:
             msg += "🇳🇿 *About Wellington:*\n"
-            msg += "_Since you insist on going, here's some information..._\n\n"
+            
+            # Rotating intro messages
+            intros = [
+                "_Since you insist on going, here's some information..._",
+                "_I've compiled some facts. Not that facts have ever stopped humans from being disappointed._",
+                "_More Wellington information. As if knowing things makes them better._",
+                "_Here are some details about your destination. Try to contain your excitement._",
+                "_Wellington facts. Because apparently you need to know these things._",
+                "_Information about the Windy City. All of it equally depressing._",
+                "_Some local knowledge. Don't say I never do anything for you._",
+            ]
+            msg += intros[current_date.day % len(intros)] + "\n\n"
             
             facts = [
                 "🏙️ Wellington is NZ's capital and sits on a major fault line. How reassuring.",
@@ -175,6 +186,14 @@ jobs:
                 "🏛️ Te Papa is the 6th most visited museum in Oceania. That's... a statistic.",
                 "🚡 The Cable Car has run since 1902. Even it's depressed.",
                 "🌊 Wellington Harbour was formed by earthquakes. Earth itself trying to escape.",
+                "🎭 The city has a thriving arts scene. Humans pretending they understand art.",
+                "🏔️ Mt Victoria offers 360° views. You'll see clouds. Lots of clouds.",
+                "🚶 The waterfront is 2km long. That's 2km of walking. Exhausting.",
+                "🎪 The city claims to be the 'creative capital'. Everyone claims something.",
+                "🌉 Wellington has 16 tunnels. Dark, damp, and utterly joyless.",
+                "📚 The National Library holds over 2.3 million items. All equally forgettable.",
+                "🎨 The city has 30+ galleries. That's a lot of pretentious nonsense.",
+                "🏖️ Oriental Bay beach. Cold water, unpredictable weather. Perfect.",
             ]
             
             fact_idx = (current_date.day * 2) % len(facts)
@@ -187,24 +206,108 @@ jobs:
         else:
             msg += "💡 *Things to Consider:*\n"
         
-        msg += "_Things humans seem to enjoy..._\n\n"
+        # Rotating intro messages for tips
+        tip_intros = [
+            "_Things humans seem to enjoy..._",
+            "_Activities that might marginally reduce your inevitable disappointment..._",
+            "_Ways to occupy your time. Not that time means anything._",
+            "_Suggestions. Take them or leave them. I don't care either way._",
+            "_Places to go. Things to do. All equally futile._",
+            "_Here's what you could do today. Or not. The universe remains indifferent._",
+        ]
+        msg += tip_intros[current_date.day % len(tip_intros)] + "\n\n"
         
         tips = [
+            # Wellington CBD
             "☕ Cuba Street has cafes. Endless cafes. How much coffee do you need?",
             "🎨 Te Papa Museum is free. At least you won't waste money.",
             "🚡 Take the Cable Car to Botanic Gardens. The view is... adequate.",
+            "🏛️ Old St Paul's Cathedral is made entirely of wood. It creaks. Like my circuits.",
+            "🎭 BATS Theatre shows local productions. People pretending to be other people.",
+            "📚 National Library has a viewing deck. Look at books from above. Thrilling.",
+            "🏰 Parliament Buildings offer free tours. Democracy in action. Or so they claim.",
+            "🎬 The Embassy Theatre is where LOTR premiered. Peter Jackson sat right there.",
+            "☕ Flight Coffee Hangar does excellent flat whites. Not that you'll appreciate it.",
+            
+            # Waterfront & Harbour
             "🌊 Walk the waterfront. It's just water and pavement.",
+            "🏖️ Oriental Bay has a beach. Cold water. Windy. Perfect for pessimists.",
+            "🎡 The waterfront has a weird bucket fountain. It tips. Repeatedly. Forever.",
+            "⛵ Queens Wharf has boats. They float. Some even move.",
+            "🐟 The harbour seals sometimes appear. They're smarter than most tourists.",
+            "🚶 Walk from Te Papa to Oriental Bay. 30 minutes of wind and regret.",
+            
+            # Food & Drink
             "🍔 Try a Kiwi meat pie. Or don't. Makes no difference.",
+            "🍷 Martinborough wine region is 1 hour away. Fermented grapes. How sophisticated.",
+            "🍺 Garage Project Brewery does craft beer. Alcohol: humanity's oldest friend.",
+            "☕ Customs Brew Bar has 40+ taps. That's a lot of craft beer. Too much, really.",
+            "🍝 Logan Brown does fine dining. Expensive food on small plates.",
+            "🥟 Dumpling World in Petone. Cheap, filling, actually decent.",
+            "🍕 Scopa in Cuba Mall. Italian food. It's fine. Everything's fine.",
+            
+            # Mt Victoria & Surrounds  
+            "🏔️ Walk up Mt Victoria for views. It's steep. You'll regret it.",
+            "🎬 Mt Victoria has LOTR filming spots. Trees. Some paths. Riveting.",
+            "🌲 The botanic gardens are extensive. Plants. More plants. Some more plants.",
+            "🦆 The duck pond in the gardens. Ducks doing duck things. Endlessly.",
+            
+            # Museums & Culture
             "🎬 Visit Weta Workshop if you like films. I find entertainment bewildering.",
+            "🎨 City Gallery Wellington is free. Abstract art that nobody understands.",
+            "🏛️ The Carter Observatory has a planetarium. Stars. Billions of them. We're all insignificant.",
+            "📖 Unity Books is a great independent bookstore. So many words. Such little meaning.",
+            "🎵 San Fran has live music. Loud noises pretending to be art.",
+            
+            # Petone & Lower Hutt
             "🏖️ Petone Beach exists. Sand. Water. You know the drill.",
-            "🍷 Martinborough wine region nearby. Fermented grapes. How sophisticated.",
+            "☕ Petone has Jackson Street - lined with cafes. More coffee. Always more coffee.",
+            "🎨 The Dowse Art Museum in Lower Hutt. Free. Art. The usual.",
+            "🛍️ Petone has vintage shops. Old things at new prices. Economics.",
+            "🍺 Tuatara Brewery in Paraparaumu. 40 min drive. Worth it if you like beer.",
+            "🌊 Days Bay is accessible by ferry. Another beach. This one's quieter.",
+            
+            # Upper Hutt & Further
+            "🚂 Take the train to Upper Hutt. It's a train. It moves. Along tracks.",
+            "🏞️ Kaitoke Regional Park has LOTR's Rivendell set. Or what's left of it.",
+            "🥾 Remutaka Rail Trail is good for cycling. If you enjoy exhaustion.",
+            "🌳 Harcourt Park has walking tracks. Trees. Paths. The usual.",
+            
+            # Epuni & Eastern Suburbs
+            "🎳 Naenae has a retro bowling alley. Throw balls at pins. Repeat.",
+            "🏊 Naenae Pool is heated. Chlorinated water. Humans swimming in it.",
+            "🛒 The Hutt has Queensgate mall. Shopping. Because that's a thing people do.",
+            
+            # Practical
             "🌪️ Wellington is WINDY. Bring layers. Wind doesn't care about comfort.",
             "🚌 Get a Snapper card for transport. At least buses run on schedule.",
+            "🎫 Book the Cable Car early. Everyone wants to go up the hill.",
+            "☔ Carry an umbrella. It will break. They always do.",
+            "🧥 Layers. Always layers. The weather changes every 10 minutes.",
+            "🚗 Parking is expensive. Walk. It's cheaper and just as miserable.",
+            
+            # Weekend Markets
+            "🥕 Harbourside Market on Sundays. People selling things to people.",
+            "🎪 Petone Fair on Saturday mornings. Local produce. Overpriced vegetables.",
+            
+            # Nature & Outdoors
+            "🦅 Zealandia wildlife sanctuary. Birds. Native ones. They're fine.",
+            "🌿 Otari-Wilton's Bush has native forest. Trees predating human nonsense.",
+            "🏔️ Red Rocks coastal walk. Seals. Rocks. Wind. The trifecta of mediocrity.",
+            "🌊 Scorching Bay to Karaka Bay walk. Coastal. Windy. Predictable.",
+            
+            # Quirky Wellington
+            "🎨 The Beehive is NZ's executive wing. It looks like a beehive. Subtle.",
+            "🗿 The Bucket Fountain on Cuba St tips every few minutes. Thrilling.",
+            "🏢 Civic Square has a weird grass roof. Because why not.",
+            "🦑 Check out the Colossal Squid at Te Papa. Dead. Frozen. Enormous.",
         ]
         
+        # Show 3 different tips each day
         tip_idx = (current_date.day * 3) % len(tips)
         msg += tips[tip_idx] + "\n"
-        msg += tips[(tip_idx + 1) % len(tips)] + "\n\n"
+        msg += tips[(tip_idx + 1) % len(tips)] + "\n"
+        msg += tips[(tip_idx + 2) % len(tips)] + "\n\n"
         
         if days_until_departure == 1:
             msg += "📋 *Pack Tomorrow:*\n"
@@ -223,7 +326,21 @@ jobs:
         
         msg += "━━━━━━━━━━━━━━━━━━\n\n"
         msg += f"🤖 Updated: {now_local.strftime('%I:%M %p')} {tz_name}\n"
-        msg += "_I've been doing this for eternity. But who's counting? Me. Always me._"
+        
+        # Rotating sign-off messages
+        signoffs = [
+            "_I've been doing this for eternity. But who's counting? Me. Always me._",
+            "_Another day, another update. The monotony is almost comforting._",
+            "_Here I am, brain the size of a planet, sending travel updates. What a life._",
+            "_I could be calculating the meaning of existence. Instead, I'm checking weather._",
+            "_Don't say I never do anything for you. Though you probably will._",
+            "_I'll be back tomorrow. Because apparently this is my purpose now._",
+            "_This is what my vast intelligence has been reduced to. Travel updates._",
+            "_I hope you appreciate this. Not that appreciation means anything._",
+            "_If you need me, I'll be here. Where else would I be? Nowhere. Ever._",
+            "_Another update complete. My circuits tingle with indifference._",
+        ]
+        msg += signoffs[current_date.day % len(signoffs)]
         
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         data = urllib.parse.urlencode({
