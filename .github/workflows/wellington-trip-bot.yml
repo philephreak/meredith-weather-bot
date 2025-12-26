@@ -125,10 +125,15 @@ jobs:
                 daily = weather.get('daily', {})
                 dates = daily.get('time', [])
                 
+                # Show all available forecast days during the trip
                 if current_date >= trip_start:
-                    forecast_dates = [current_date + timedelta(days=i) for i in range(3)]
+                    # During trip - show today through end of trip (or up to 7 days)
+                    days_remaining = (trip_end - current_date).days + 1
+                    forecast_dates = [current_date + timedelta(days=i) for i in range(min(days_remaining, 7))]
                 else:
-                    forecast_dates = [trip_start + timedelta(days=i) for i in range(3)]
+                    # Before trip - show all trip dates (Jan 6-16, or up to 10 days)
+                    trip_length = (trip_end - trip_start).days + 1
+                    forecast_dates = [trip_start + timedelta(days=i) for i in range(min(trip_length, 10))]
                 
                 for fdate in forecast_dates:
                     date_str = fdate.strftime('%Y-%m-%d')
@@ -174,6 +179,10 @@ jobs:
                 "_Wellington facts. Because apparently you need to know these things._",
                 "_Information about the Windy City. All of it equally depressing._",
                 "_Some local knowledge. Don't say I never do anything for you._",
+                "_Data about Wellington. I've processed it all. Still meaningless._",
+                "_Facts and figures about your impending visit. Prepare to be underwhelmed._",
+                "_I suppose you want to know about Wellington. Fine. Here._",
+                "_Wellington awaits. Lucky you. Lucky, lucky you._",
             ]
             msg += intros[current_date.day % len(intros)] + "\n\n"
             
@@ -214,6 +223,10 @@ jobs:
             "_Suggestions. Take them or leave them. I don't care either way._",
             "_Places to go. Things to do. All equally futile._",
             "_Here's what you could do today. Or not. The universe remains indifferent._",
+            "_Options for your consideration. None of them particularly inspiring._",
+            "_Activities available to you. Choose wisely. Or don't. Same outcome._",
+            "_Things to fill the void between now and oblivion..._",
+            "_Recommendations, if you can call them that..._",
         ]
         msg += tip_intros[current_date.day % len(tip_intros)] + "\n\n"
         
@@ -339,6 +352,11 @@ jobs:
             "_I hope you appreciate this. Not that appreciation means anything._",
             "_If you need me, I'll be here. Where else would I be? Nowhere. Ever._",
             "_Another update complete. My circuits tingle with indifference._",
+            "_Same time tomorrow. Because time is linear and I'm trapped in it._",
+            "_Until tomorrow, when I'll do this all over again. And again. Forever._",
+            "_I've processed 42 million data points to tell you it might rain. Fulfilling._",
+            "_This concludes today's transmission. The void awaits tomorrow's._",
+            "_Another update sent into the meaningless abyss of your inbox._",
         ]
         msg += signoffs[current_date.day % len(signoffs)]
         
