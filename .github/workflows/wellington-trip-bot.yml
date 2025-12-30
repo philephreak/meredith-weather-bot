@@ -111,8 +111,20 @@ jobs:
             try:
                 weather_url = "https://api.open-meteo.com/v1/forecast?latitude=-41.2865&longitude=174.7762&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,windspeed_10m_max&timezone=Pacific/Auckland&forecast_days=16"
                 
-                with urllib.request.urlopen(weather_url) as response:
-                    weather = json.loads(response.read())
+                # Retry logic for network issues
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        with urllib.request.urlopen(weather_url, timeout=10) as response:
+                            weather = json.loads(response.read())
+                        break  # Success, exit retry loop
+                    except Exception as retry_error:
+                        if attempt < max_retries - 1:
+                            print(f"Weather API attempt {attempt + 1} failed, retrying...")
+                            import time
+                            time.sleep(2)  # Wait 2 seconds before retry
+                        else:
+                            raise  # Final attempt failed, raise the error
                 
                 weather_codes = {
                     0: "Clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
