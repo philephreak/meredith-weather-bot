@@ -139,13 +139,13 @@ jobs:
                 
                 # Show all available forecast days during the trip
                 if current_date >= trip_start:
-                    # During trip - show today through end of trip (or up to 7 days)
-                    days_remaining = (trip_end - current_date).days + 1
-                    forecast_dates = [current_date + timedelta(days=i) for i in range(min(days_remaining, 7))]
+                    # During trip - show today through end of trip (ALL remaining days)
+                    days_remaining = (trip_end - current_date).days + 1  # +1 to include trip_end
+                    forecast_dates = [current_date + timedelta(days=i) for i in range(days_remaining)]
                 else:
-                    # Before trip - show all trip dates (Jan 6-16, or up to 10 days)
-                    trip_length = (trip_end - trip_start).days + 1
-                    forecast_dates = [trip_start + timedelta(days=i) for i in range(min(trip_length, 10))]
+                    # Before trip - show all trip dates INCLUDING Jan 16 (or up to 11 days)
+                    trip_length = (trip_end - trip_start).days + 1  # +1 to include trip_end
+                    forecast_dates = [trip_start + timedelta(days=i) for i in range(min(trip_length, 11))]
                 
                 for fdate in forecast_dates:
                     date_str = fdate.strftime('%Y-%m-%d')
