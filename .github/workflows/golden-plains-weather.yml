@@ -1,0 +1,215 @@
+name: Golden Plains Weather Forecast
+
+on:
+  schedule:
+    # Runs at 7:00 AM Melbourne time (8:00 PM UTC previous day)
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-weather:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Send Weather Forecast
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.MY_TELEGRAM_CHAT_ID }}
+      run: |
+        python3 << 'ENDOFPYTHON'
+        import json
+        import urllib.request
+        import urllib.parse
+        import os
+        from datetime import datetime, timezone, timedelta
+        
+        bot_token = os.environ['TELEGRAM_BOT_TOKEN']
+        chat_id = os.environ['TELEGRAM_CHAT_ID']
+        
+        # Melbourne timezone
+        melbourne_tz = timezone(timedelta(hours=11))
+        now_melbourne = datetime.now(timezone.utc).astimezone(melbourne_tz)
+        
+        # Golden Plains dates
+        festival_start = datetime(2026, 3, 7, tzinfo=melbourne_tz).date()
+        festival_end = datetime(2026, 3, 9, tzinfo=melbourne_tz).date()
+        
+        current_date = now_melbourne.date()
+        
+        # Only run until festival ends
+        if current_date > festival_end:
+            print(f"Festival ended. Current: {current_date}")
+            exit(0)
+        
+        print(f"Running for date: {current_date}")
+        
+        # Calculate days until festival
+        days_until = (festival_start - current_date).days
+        
+        # Meredith/Golden Plains coordinates
+        latitude = -37.8333
+        longitude = 144.1167
+        
+        # Fetch weather from Open-Meteo
+        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,windspeed_10m_max&timezone=Australia/Melbourne&forecast_days=16"
+        
+        # Retry logic for network issues
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                with urllib.request.urlopen(weather_url, timeout=10) as response:
+                    weather_data = json.loads(response.read())
+                break
+            except Exception as retry_error:
+                if attempt < max_retries - 1:
+                    print(f"Weather API attempt {attempt + 1} failed, retrying...")
+                    import time
+                    time.sleep(2)
+                else:
+                    print(f"Weather fetch failed after {max_retries} attempts")
+                    exit(1)
+        
+        # Weather codes
+        weather_codes = {
+            0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+            45: "Foggy", 48: "Rime fog", 51: "Light drizzle", 53: "Drizzle",
+            55: "Heavy drizzle", 61: "Light rain", 63: "Rain", 65: "Heavy rain",
+            71: "Light snow", 73: "Snow", 75: "Heavy snow", 77: "Snow grains",
+            80: "Light showers", 81: "Showers", 82: "Heavy showers",
+            85: "Light snow showers", 86: "Snow showers", 95: "Thunderstorm",
+            96: "Thunderstorm with hail", 99: "Heavy thunderstorm"
+        }
+        
+        # Build message
+        msg = "🎪 *Golden Plains Weather Forecast*\n\n"
+        msg += f"📅 {now_melbourne.strftime('%A, %B %d, %Y')}\n\n"
+        
+        if days_until > 0:
+            msg += f"🎉 *{days_until} day{'s' if days_until != 1 else ''} until Golden Plains!*\n\n"
+        elif days_until == 0:
+            msg += "🎪 *FESTIVAL STARTS TODAY!*\n\n"
+        else:
+            day_num = abs(days_until) + 1
+            msg += f"🎸 *Golden Plains Day {day_num}!*\n\n"
+        
+        msg += "━━━━━━━━━━━━━━━━━━\n\n"
+        
+        # Today's weather
+        daily_data = weather_data.get('daily', {})
+        dates_list = daily_data.get('time', [])
+        today_str = current_date.strftime('%Y-%m-%d')
+        
+        if today_str in dates_list:
+            idx = dates_list.index(today_str)
+            msg += f"*TODAY ({now_melbourne.strftime('%A %d %B')}):*\n"
+            msg += f"🌡️ High: {daily_data['temperature_2m_max'][idx]}°C / Low: {daily_data['temperature_2m_min'][idx]}°C\n"
+            msg += f"💧 Rain: {daily_data['precipitation_sum'][idx]}mm\n"
+            msg += f"💨 Wind: {daily_data['windspeed_10m_max'][idx]} km/h\n"
+            msg += f"☁️ {weather_codes.get(daily_data['weathercode'][idx], 'Unknown')}\n\n"
+            msg += "━━━━━━━━━━━━━━━━━━\n\n"
+        
+        # Festival dates forecast
+        msg += "*Golden Plains Festival:*\n\n"
+        
+        festival_dates = [
+            (festival_start, "Friday, March 7, 2026"),
+            (festival_start + timedelta(days=1), "Saturday, March 8, 2026"),
+            (festival_start + timedelta(days=2), "Sunday, March 9, 2026")
+        ]
+        
+        for fdate, display_name in festival_dates:
+            date_str = fdate.strftime('%Y-%m-%d')
+            msg += f"*{display_name}:*\n"
+            
+            if date_str in dates_list:
+                idx = dates_list.index(date_str)
+                temp_max = daily_data['temperature_2m_max'][idx]
+                temp_min = daily_data['temperature_2m_min'][idx]
+                precip = daily_data['precipitation_sum'][idx]
+                wind = daily_data['windspeed_10m_max'][idx]
+                code = daily_data['weathercode'][idx]
+                desc = weather_codes.get(code, "Unknown")
+                
+                msg += f"🌡️ High: {temp_max}°C / Low: {temp_min}°C\n"
+                msg += f"💧 Rain: {precip}mm\n"
+                msg += f"💨 Wind: {wind} km/h\n"
+                msg += f"☁️ {desc}\n\n"
+            else:
+                days_away = (fdate - current_date).days
+                if days_away > 16:
+                    msg += f"Forecast available in ~{days_away - 16} days\n\n"
+                else:
+                    msg += "Forecast not available\n\n"
+        
+        msg += "━━━━━━━━━━━━━━━━━━\n\n"
+        
+        # Artist of the day - Golden Plains 2026 lineup
+        artists = [
+            {"name": "Basement Jaxx", "info": "UK house legends bringing their full live show after a decade away", "song": "Where's Your Head At"},
+            {"name": "Marlon Williams", "info": "Haunting vocalist performing from te reo Māori album with The Yarra Benders", "song": "Make Way for Love"},
+            {"name": "Cut Copy", "info": "Melbourne electronic icons opening the weekend", "song": "Lights & Music"},
+            {"name": "Smerz", "info": "Norwegian art-pop duo making their Australian debut with bleary, lusty vibes", "song": "Believer"},
+            {"name": "BADBADNOTGOOD", "info": "Canadian jazz-tronauts crossing genres with psychedelic instrumental ecstasy", "song": "Time Moves Slow"},
+            {"name": "Ty Segall", "info": "Guitar hero bringing his Freedom Band for psych-rock heroics", "song": "Freedom"},
+            {"name": "Obongjayar", "info": "UK artist delivering spiritual punk and afrobeat", "song": "Message in a Hammer"},
+            {"name": "Jalen Ngonda", "info": "Rising UK soul vocalist with a once-in-a-generation voice", "song": "Come Around and Love Me"},
+            {"name": "François K", "info": "Legendary NYC DJ and producer bringing deep house mastery", "song": "Time & Space"},
+            {"name": "Water From Your Eyes", "info": "Brooklyn duo serving up genre-blurring experimental pop", "song": "Barley"},
+            {"name": "Frost Children", "info": "Sharp alternative energy from the sibling duo", "song": "Hearth"},
+            {"name": "Bleak Squad", "info": "Melbourne collective bringing powerful performance art and music", "song": "Goon"},
+            {"name": "DJRUM", "info": "UK producer crafting deep, late-night electronic journeys", "song": "Showreel"},
+            {"name": "Upchuck", "info": "Atlanta punks with ferocious energy", "song": "Buzz"},
+            {"name": "Crazy P", "info": "Disco veterans hitting the decks in DJ mode", "song": "Like a Fantasy"},
+            {"name": "This Is Lorelei", "info": "Troubadour in a hoodie with intimate storytelling", "song": "Glitter"},
+            {"name": "Georgia Knight", "info": "Melbourne artist fresh from releasing debut album Beanpole", "song": "Beanpole"},
+            {"name": "Kee'Ahn", "info": "Yalanji, Jirrbal, and Badulaig artist blending R&B, soul, and electronica", "song": "Skin"},
+            {"name": "Derya Yıldırım & Grup Şimşek", "info": "Turkish psych-folk with hypnotic Anatolian grooves", "song": "Oy Oy Emine"},
+            {"name": "OK Williams", "info": "Soulful vocalist with R&B and electronic fusion", "song": "Stay With Me"},
+            {"name": "Paquita Gordon", "info": "Italian selector taking it deep with strictly vinyl selections", "song": ""},
+            {"name": "Becca Hatch", "info": "Kamilaroi/Samoan artist bringing powerful songwriting", "song": "Moth"},
+            {"name": "Sidney Phillips", "info": "Morayfield rapper with sharp lyricism", "song": "Flicker"},
+            {"name": "Public Figures", "info": "Melbourne punky duo with raw energy", "song": "Crash"},
+            {"name": "Way Dynamic", "info": "Dylan Young's minimalist folk-pop and baroque exploration", "song": "Miffed It"},
+            {"name": "Devaura", "info": "Melbourne producer with hypnotic electronic soundscapes", "song": "Drift"},
+            {"name": "The Gnomes", "info": "Frankston's finest garage pop rock and rollers", "song": "Garden Song"},
+            {"name": "Hybrid Man", "info": "IDM and ambient fusion from Julien Huynh and Will Holden", "song": "Dust and Liquid"},
+        ]
+        
+        # Select artist based on day of year to ensure variety
+        artist_index = (current_date.timetuple().tm_yday) % len(artists)
+        today_artist = artists[artist_index]
+        
+        msg += "🎵 *Artist Spotlight:*\n"
+        msg += f"*{today_artist['name']}*\n"
+        msg += f"{today_artist['info']}\n"
+        if today_artist['song']:
+            msg += f"Popular track: _{today_artist['song']}_\n"
+        # URL encode the artist name for Spotify search
+        search_query = urllib.parse.quote(today_artist['name'])
+        msg += f"🎧 Listen: https://open.spotify.com/search/{search_query}\n\n"
+        msg += "━━━━━━━━━━━━━━━━━━\n\n"
+        
+        msg += f"📍 Location: Meredith Supernatural Amphitheatre\n"
+        msg += f"🕐 Updated: {now_melbourne.strftime('%I:%M %p AEDT')}"
+        
+        # Send to Telegram
+        telegram_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = urllib.parse.urlencode({
+            'chat_id': chat_id,
+            'text': msg,
+            'parse_mode': 'Markdown'
+        }).encode()
+        
+        req = urllib.request.Request(telegram_url, data=data)
+        
+        try:
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read())
+                if result.get('ok'):
+                    print("✅ Golden Plains forecast sent!")
+                else:
+                    print(f"Telegram error: {result}")
+        except Exception as e:
+            print(f"Send error: {e}")
+            exit(1)
+        ENDOFPYTHON
