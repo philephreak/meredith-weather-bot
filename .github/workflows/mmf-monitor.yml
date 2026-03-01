@@ -4,6 +4,8 @@ on:
   schedule:
     # Runs at 9:00 AM Melbourne time (10:00 PM UTC previous day)
     - cron: '0 22 * * *'
+    # Runs at 1:00 PM Melbourne time (2:00 AM UTC same day)
+    - cron: '0 2 * * *'
     # Runs at 5:00 PM Melbourne time (6:00 AM UTC same day)
     - cron: '0 6 * * *'
   workflow_dispatch: # Allows manual testing
@@ -169,7 +171,7 @@ jobs:
             message += "I'm now monitoring:\n"
             message += "• https://mmf.com.au/\n"
             message += "• https://goldenplains.com.au/\n\n"
-            message += "Checking twice daily at 9:00 AM and 5:00 PM.\n\n"
+            message += "Checking three times daily at 9:00 AM, 1:00 PM and 5:00 PM.\n\n"
             message += f"Initial check: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
             messages_to_send.append(message)
         
