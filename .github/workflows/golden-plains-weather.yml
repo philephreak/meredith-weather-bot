@@ -112,9 +112,9 @@ jobs:
         msg += "*Golden Plains Festival:*\n\n"
         
         festival_dates = [
-            (festival_start, "Friday, March 7, 2026"),
-            (festival_start + timedelta(days=1), "Saturday, March 8, 2026"),
-            (festival_start + timedelta(days=2), "Sunday, March 9, 2026")
+            (festival_start, "Saturday, March 7, 2026"),
+            (festival_start + timedelta(days=1), "Sunday, March 8, 2026"),
+            (festival_start + timedelta(days=2), "Monday, March 9, 2026")
         ]
         
         for fdate, display_name in festival_dates:
